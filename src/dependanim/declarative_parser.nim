@@ -48,43 +48,47 @@ proc parseRequiresArg(rawArg: string, lineIndex: int, rawLine: string): Option[D
 proc parseNimbleManifest*(content: string, filePath: string = ""): NimbleManifest =
   result.filePath = filePath
   let lines = content.splitLines()
+  var inRequiresContinuation = false
 
   for i, line in lines:
     let stripped = line.strip()
+    if stripped.len == 0:
+      continue
     # Skip full comment lines
     if stripped.startsWith("#"):
       continue
 
     # Extract metadata fields
     if stripped.startsWith("version"):
+      inRequiresContinuation = false
       let eqIdx = stripped.find('=')
       if eqIdx != -1:
         result.version = stripped[(eqIdx + 1)..^1].strip().strip(chars = {'"'})
     elif stripped.startsWith("author"):
+      inRequiresContinuation = false
       let eqIdx = stripped.find('=')
       if eqIdx != -1:
         result.author = stripped[(eqIdx + 1)..^1].strip().strip(chars = {'"'})
     elif stripped.startsWith("description"):
+      inRequiresContinuation = false
       let eqIdx = stripped.find('=')
       if eqIdx != -1:
         result.description = stripped[(eqIdx + 1)..^1].strip().strip(chars = {'"'})
     elif stripped.startsWith("license"):
+      inRequiresContinuation = false
       let eqIdx = stripped.find('=')
       if eqIdx != -1:
         result.license = stripped[(eqIdx + 1)..^1].strip().strip(chars = {'"'})
 
-    # Extract requires lines
-    if stripped.startsWith("requires"):
-      # Could be: requires "a >= 1.0", "b >= 2.0"
-      # Strip "requires" prefix
-      let afterRequires = stripped[8..^1].strip()
-      # Strip trailing comment on the same line if present outside strings
-      # For simple extraction, split by comma if not inside quotes
+    # Extract requires lines or continuations
+    if stripped.startsWith("requires") or inRequiresContinuation:
+      let toParse = if stripped.startsWith("requires"): stripped[8..^1].strip() else: stripped
       var currentArg = ""
       var inQuote = false
       var quoteChar = '"'
+      var lineEndsWithComma = false
 
-      for ch in afterRequires:
+      for ch in toParse:
         if ch in {'"', '\''}:
           if not inQuote:
             inQuote = true
@@ -92,6 +96,7 @@ proc parseNimbleManifest*(content: string, filePath: string = ""): NimbleManifes
           elif quoteChar == ch:
             inQuote = false
           currentArg.add(ch)
+          lineEndsWithComma = false
         elif ch == '#' and not inQuote:
           # Trailing comment reached
           break
@@ -100,10 +105,17 @@ proc parseNimbleManifest*(content: string, filePath: string = ""): NimbleManifes
           if depOpt.isSome:
             result.dependencies.add(depOpt.get)
           currentArg = ""
+          lineEndsWithComma = true
+        elif ch in {' ', '\t'}:
+          if inQuote:
+            currentArg.add(ch)
         else:
           currentArg.add(ch)
+          lineEndsWithComma = false
 
       if currentArg.len > 0:
         let depOpt = parseRequiresArg(currentArg, i, line)
         if depOpt.isSome:
           result.dependencies.add(depOpt.get)
+
+      inRequiresContinuation = lineEndsWithComma

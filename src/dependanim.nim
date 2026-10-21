@@ -13,6 +13,7 @@ Options:
   -c, --config:<path>   Path to configuration file (default: .github/dependanim.yml)
   -d, --dry-run         Check for updates without modifying files or opening PRs
   -k, --check           Check for updates and exit with code 1 if updates found
+  -g, --git             Create git branch and commit changes for updates
   -v, --version         Print version information and exit
   -h, --help            Print this help message and exit
 """
@@ -27,6 +28,7 @@ proc main() =
   var configPath = ".github/dependanim.yml"
   var dryRun = false
   var checkOnly = false
+  var enableGit = false
 
   var p = initOptParser()
   while true:
@@ -47,6 +49,8 @@ proc main() =
         dryRun = true
       of "k", "check":
         checkOnly = true
+      of "g", "git":
+        enableGit = true
       else:
         echo "Unknown option: " & p.key
         quit(1)
@@ -115,12 +119,30 @@ proc main() =
     writeFile(nimblePath, updatedNimble)
     echo "==> Updated " & nimblePath & " in-place."
 
+    var modifiedFiles: seq[string] = @[nimblePath]
     if lockFileOpt.isSome:
       var lock = lockFileOpt.get
       for u in updates:
         updateLockPackage(lock, u.dependency.name, u.targetVersion, u.targetVcsRevision)
       writeFile(lockPath, serializeLockFile(lock))
       echo "==> Updated " & lockPath & " in-place."
+      modifiedFiles.add(lockPath)
+
+    if enableGit or isGitHubActions():
+      echo "==> [GitOps] Creating branch and committing updates..."
+      let report = executeGitOps(
+        updates,
+        modifiedFiles,
+        baseBranch = target.targetBranch,
+        authorName = "dependanim[bot]",
+        authorEmail = "dependanim[bot]@users.noreply.github.com",
+        workingDir = searchDir,
+        commitPrefix = target.commitMessage.prefix
+      )
+      if report.success:
+        echo "==> [GitOps] Successfully created branch '" & report.branchName & "' and committed changes."
+      else:
+        echo "==> [WARN] GitOps error: " & report.error
 
   if isGitHubActions():
     setActionOutput("updates_count", $totalUpdates)

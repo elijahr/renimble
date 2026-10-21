@@ -40,7 +40,6 @@ suite "Nimble Version & Constraint Engine":
     check not satisfiesSingle(v, parseSingleConstraint("> 1.2.3"))
 
   test "Caret (^=) and Tilde (~=) operators":
-    let targetCaret = parseSemVersion("1.2.3")
     check satisfiesSingle(parseSemVersion("1.2.4"), parseSingleConstraint("^= 1.2.3"))
     check satisfiesSingle(parseSemVersion("1.5.0"), parseSingleConstraint("^= 1.2.3"))
     check not satisfiesSingle(parseSemVersion("2.0.0"), parseSingleConstraint("^= 1.2.3"))

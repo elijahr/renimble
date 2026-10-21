@@ -1,12 +1,8 @@
 import std/strutils
 
 proc rewriteRequiresLine*(line: string, targetPkg: string, newConstraint: string): string =
-  ## Replaces the constraint for targetPkg on a requires line while preserving
+  ## Replaces the constraint for targetPkg on a requires line or continuation line while preserving
   ## surrounding quotes, whitespace, comments, and other packages on the same line.
-  let stripped = line.strip()
-  if not stripped.startsWith("requires"):
-    return line
-
   result = ""
   var i = 0
   while i < line.len:
@@ -62,10 +58,22 @@ proc rewriteRequiresLine*(line: string, targetPkg: string, newConstraint: string
 proc rewriteNimbleFile*(content: string, targetPkg: string, newConstraint: string): string =
   let lines = content.splitLines()
   var modified: seq[string] = @[]
+  var inRequires = false
 
   for line in lines:
-    if line.strip().startsWith("requires") and targetPkg in line:
-      modified.add(rewriteRequiresLine(line, targetPkg, newConstraint))
+    let stripped = line.strip()
+    if stripped.startsWith("requires") or inRequires:
+      if targetPkg in line:
+        modified.add(rewriteRequiresLine(line, targetPkg, newConstraint))
+      else:
+        modified.add(line)
+
+      # Check if continuation ends (line ending with comma outside trailing comments)
+      var code = line
+      let commentIdx = code.find('#')
+      if commentIdx != -1:
+        code = code[0..<commentIdx]
+      inRequires = code.strip().endsWith(",")
     else:
       modified.add(line)
 
