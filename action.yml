@@ -1,0 +1,60 @@
+name: 'Dependanim: Nim Dependency Updater'
+description: 'Automated .nimble and nimble.lock dependency updater for Nim projects'
+author: 'Axiomantic'
+branding:
+  icon: 'package'
+  color: 'yellow'
+
+inputs:
+  github-token:
+    description: 'GitHub token with repository permissions for creating branches and PRs'
+    required: false
+    default: ${{ github.token }}
+  config-path:
+    description: 'Path to dependanim.yml configuration file'
+    required: false
+    default: '.github/dependanim.yml'
+  dry-run:
+    description: 'Check for available dependency updates without writing files or opening PRs'
+    required: false
+    default: 'false'
+  check:
+    description: 'Fail step (exit code 1) if any dependency updates are available'
+    required: false
+    default: 'false'
+
+outputs:
+  has_updates:
+    description: 'Whether dependency updates were found ("true" or "false")'
+    value: ${{ steps.run-dependanim.outputs.has_updates }}
+  updates_count:
+    description: 'Total number of dependency updates discovered'
+    value: ${{ steps.run-dependanim.outputs.updates_count }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Nim
+      uses: jiro4989/setup-nim-action@v2
+      with:
+        nim-version: '2.2.0'
+
+    - name: Build dependanim
+      shell: bash
+      run: |
+        nim c -d:release --opt:speed -o:/tmp/dependanim ${{ github.action_path }}/src/dependanim.nim
+
+    - name: Run dependanim
+      id: run-dependanim
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: |
+        FLAGS=""
+        if [ "${{ inputs.dry-run }}" = "true" ]; then
+          FLAGS="$FLAGS --dry-run"
+        fi
+        if [ "${{ inputs.check }}" = "true" ]; then
+          FLAGS="$FLAGS --check"
+        fi
+        /tmp/dependanim --config:${{ inputs.config-path }} $FLAGS

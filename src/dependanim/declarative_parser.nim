@@ -1,0 +1,109 @@
+import std/[strutils, options]
+import types, version
+
+proc parseRequiresArg(rawArg: string, lineIndex: int, rawLine: string): Option[Dependency] =
+  var clean = rawArg.strip()
+  if clean.startsWith("\"") and clean.endsWith("\"") and clean.len >= 2:
+    clean = clean[1..^2]
+  elif clean.startsWith("'") and clean.endsWith("'") and clean.len >= 2:
+    clean = clean[1..^2]
+  else:
+    return none(Dependency)
+
+  clean = clean.strip()
+  if clean.len == 0:
+    return none(Dependency)
+
+  # Check for feature flag: pkg[feature] >= 1.0
+  var pkgName = ""
+  var feature: Option[string] = none(string)
+  var rest = ""
+
+  let bracketOpen = clean.find('[')
+  let bracketClose = clean.find(']')
+  if bracketOpen != -1 and bracketClose != -1 and bracketClose > bracketOpen:
+    pkgName = clean[0..<bracketOpen].strip()
+    feature = some(clean[(bracketOpen + 1)..<bracketClose].strip())
+    rest = clean[(bracketClose + 1)..^1].strip()
+  else:
+    # Separate package name from constraint
+    # Package name ends at whitespace or special character (#, =, <, >, ^, ~)
+    var nameEnd = 0
+    while nameEnd < clean.len and clean[nameEnd] notin {' ', '\t', '#', '=', '<', '>', '^', '~'}:
+      inc nameEnd
+    pkgName = clean[0..<nameEnd].strip()
+    rest = clean[nameEnd..^1].strip()
+
+  let constraint = parseVersionConstraint(rest)
+
+  result = some(Dependency(
+    name: pkgName,
+    rawConstraint: rest,
+    constraint: constraint,
+    feature: feature,
+    rawLine: rawLine,
+    lineIndex: lineIndex
+  ))
+
+proc parseNimbleManifest*(content: string, filePath: string = ""): NimbleManifest =
+  result.filePath = filePath
+  let lines = content.splitLines()
+
+  for i, line in lines:
+    let stripped = line.strip()
+    # Skip full comment lines
+    if stripped.startsWith("#"):
+      continue
+
+    # Extract metadata fields
+    if stripped.startsWith("version"):
+      let eqIdx = stripped.find('=')
+      if eqIdx != -1:
+        result.version = stripped[(eqIdx + 1)..^1].strip().strip(chars = {'"'})
+    elif stripped.startsWith("author"):
+      let eqIdx = stripped.find('=')
+      if eqIdx != -1:
+        result.author = stripped[(eqIdx + 1)..^1].strip().strip(chars = {'"'})
+    elif stripped.startsWith("description"):
+      let eqIdx = stripped.find('=')
+      if eqIdx != -1:
+        result.description = stripped[(eqIdx + 1)..^1].strip().strip(chars = {'"'})
+    elif stripped.startsWith("license"):
+      let eqIdx = stripped.find('=')
+      if eqIdx != -1:
+        result.license = stripped[(eqIdx + 1)..^1].strip().strip(chars = {'"'})
+
+    # Extract requires lines
+    if stripped.startsWith("requires"):
+      # Could be: requires "a >= 1.0", "b >= 2.0"
+      # Strip "requires" prefix
+      let afterRequires = stripped[8..^1].strip()
+      # Strip trailing comment on the same line if present outside strings
+      # For simple extraction, split by comma if not inside quotes
+      var currentArg = ""
+      var inQuote = false
+      var quoteChar = '"'
+
+      for ch in afterRequires:
+        if ch in {'"', '\''}:
+          if not inQuote:
+            inQuote = true
+            quoteChar = ch
+          elif quoteChar == ch:
+            inQuote = false
+          currentArg.add(ch)
+        elif ch == '#' and not inQuote:
+          # Trailing comment reached
+          break
+        elif ch == ',' and not inQuote:
+          let depOpt = parseRequiresArg(currentArg, i, line)
+          if depOpt.isSome:
+            result.dependencies.add(depOpt.get)
+          currentArg = ""
+        else:
+          currentArg.add(ch)
+
+      if currentArg.len > 0:
+        let depOpt = parseRequiresArg(currentArg, i, line)
+        if depOpt.isSome:
+          result.dependencies.add(depOpt.get)

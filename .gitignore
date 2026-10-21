@@ -1,0 +1,27 @@
+# Nim compiler output
+nimcache/
+*.nimcache/
+nimdoc.out/
+*.exe
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+/dependanim
+bin/
+
+# Nimble cache & packages
+.nimble/
+nimbledeps/
+
+# OS / Editor files
+.DS_Store
+*.swp
+*~
+.idea/
+.vscode/
+
+# Garden & Rhizo ephemeral state
+.garden/tmp/
+/tmp/garden-dependanim/

@@ -1,0 +1,25 @@
+version: 1
+updates:
+  - package-ecosystem: "nimble"
+    directory: "/"
+    target-branch: "main"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Etc/UTC"
+
+    groups:
+      yaml-suite:
+        patterns:
+          - "yaml"
+
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+    labels:
+      - "dependencies"
+      - "nim"
+
+    open-pull-requests-limit: 10

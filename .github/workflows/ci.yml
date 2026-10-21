@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        nim-version: ['2.0.8', '2.2.0']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Nim
+        uses: jiro4989/setup-nim-action@v2
+        with:
+          nim-version: ${{ matrix.nim-version }}
+
+      - name: Install dependencies
+        run: |
+          nimble install -y --depsOnly
+
+      - name: Run Test Suite
+        run: |
+          nim c -r --hints:off tests/test_all.nim
+
+      - name: Build Binary
+        run: |
+          nim c -d:release --opt:speed -o:bin/dependanim src/dependanim.nim
+          ./bin/dependanim --version
