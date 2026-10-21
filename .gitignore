@@ -10,6 +10,7 @@ nimdoc.out/
 *.dylib
 /dependanim
 bin/
+tests/test_all
 
 # Nimble cache & packages
 .nimble/
@@ -25,3 +26,6 @@ nimbledeps/
 # Garden & Rhizo ephemeral state
 .garden/tmp/
 /tmp/garden-dependanim/
+.vine/
+.vine.json
+.envrc
