@@ -88,7 +88,11 @@ proc main() =
     var lockFileOpt: Option[LockFile] = none(LockFile)
     if fileExists(lockPath):
       echo "==> Found lockfile: " & lockPath
-      lockFileOpt = some(parseLockFile(readFile(lockPath), lockPath))
+      let parsedLock = parseLockFile(readFile(lockPath), lockPath)
+      let integrityIssues = validateLockIntegrity(manifest, parsedLock)
+      for issue in integrityIssues:
+        echo "==> [WARN] Lockfile integrity: " & issue
+      lockFileOpt = some(parsedLock)
 
     echo "==> Checking " & $manifest.dependencies.len & " dependencies..."
     var updates: seq[UpdateProposal] = @[]

@@ -59,6 +59,7 @@ type
     vcsRevision*: string
     url*: string
     downloadMethod*: string
+    dependencies*: seq[string]
 
   LockFile* = object
     filePath*: string

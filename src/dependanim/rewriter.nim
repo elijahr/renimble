@@ -1,8 +1,20 @@
 import std/strutils
 
+proc isRequiresStatement*(s: string): bool =
+  let st = s.strip()
+  if not st.startsWith("requires"):
+    return false
+  if st.len == 8:
+    return true
+  return st[8] in {' ', '\t', '(', '"', '\''}
+
 proc rewriteRequiresLine*(line: string, targetPkg: string, newConstraint: string): string =
-  ## Replaces the constraint for targetPkg on a requires line or continuation line while preserving
+  ## Replaces the constraint for targetPkg on a requires line while preserving
   ## surrounding quotes, whitespace, comments, and other packages on the same line.
+  let stripped = line.strip()
+  if not isRequiresStatement(stripped) and not stripped.contains(targetPkg):
+    return line
+
   result = ""
   var i = 0
   while i < line.len:
@@ -59,10 +71,22 @@ proc rewriteNimbleFile*(content: string, targetPkg: string, newConstraint: strin
   let lines = content.splitLines()
   var modified: seq[string] = @[]
   var inRequires = false
+  var inTripleQuote = false
 
   for line in lines:
+    let count3Q = line.count("\"\"\"")
+    if inTripleQuote:
+      modified.add(line)
+      if count3Q mod 2 != 0:
+        inTripleQuote = false
+      continue
+    elif count3Q mod 2 != 0:
+      inTripleQuote = true
+      modified.add(line)
+      continue
+
     let stripped = line.strip()
-    if stripped.startsWith("requires") or inRequires:
+    if isRequiresStatement(stripped) or inRequires:
       if targetPkg in line:
         modified.add(rewriteRequiresLine(line, targetPkg, newConstraint))
       else:

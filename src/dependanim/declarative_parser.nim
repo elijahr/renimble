@@ -45,12 +45,30 @@ proc parseRequiresArg(rawArg: string, lineIndex: int, rawLine: string): Option[D
     lineIndex: lineIndex
   ))
 
+proc isRequiresStatement*(s: string): bool =
+  let st = s.strip()
+  if not st.startsWith("requires"):
+    return false
+  if st.len == 8:
+    return true
+  return st[8] in {' ', '\t', '(', '"', '\''}
+
 proc parseNimbleManifest*(content: string, filePath: string = ""): NimbleManifest =
   result.filePath = filePath
   let lines = content.splitLines()
   var inRequiresContinuation = false
+  var inTripleQuote = false
 
   for i, line in lines:
+    let count3Q = line.count("\"\"\"")
+    if inTripleQuote:
+      if count3Q mod 2 != 0:
+        inTripleQuote = false
+      continue
+    elif count3Q mod 2 != 0:
+      inTripleQuote = true
+      continue
+
     let stripped = line.strip()
     if stripped.len == 0:
       continue
@@ -81,8 +99,8 @@ proc parseNimbleManifest*(content: string, filePath: string = ""): NimbleManifes
         result.license = stripped[(eqIdx + 1)..^1].strip().strip(chars = {'"'})
 
     # Extract requires lines or continuations
-    if stripped.startsWith("requires") or inRequiresContinuation:
-      let toParse = if stripped.startsWith("requires"): stripped[8..^1].strip() else: stripped
+    if isRequiresStatement(stripped) or inRequiresContinuation:
+      let toParse = if isRequiresStatement(stripped): stripped[8..^1].strip() else: stripped
       var currentArg = ""
       var inQuote = false
       var quoteChar = '"'

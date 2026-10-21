@@ -1,10 +1,16 @@
-import std/[strutils, parseutils]
+import std/strutils
 import types
 
 proc parseSemVersion*(s: string): SemVersion =
   var clean = s.strip()
+  if clean.len == 0:
+    raise newException(ValueError, "Empty version string")
+
   if clean.startsWith("v") or clean.startsWith("V"):
     clean = clean[1..^1]
+
+  if clean.len == 0:
+    raise newException(ValueError, "Invalid SemVer: version missing after 'v' prefix")
 
   # Split build metadata (+)
   var buildMeta = ""
@@ -21,13 +27,24 @@ proc parseSemVersion*(s: string): SemVersion =
     clean = clean[0..<dashIdx]
 
   let parts = clean.split('.')
+  if parts.len < 1 or parts.len > 3:
+    raise newException(ValueError, "Invalid SemVer format (must have 1-3 dot-separated numeric parts): " & s)
+
   var maj, min, pat = 0
-  if parts.len >= 1 and parts[0].len > 0:
-    discard parseInt(parts[0], maj)
-  if parts.len >= 2 and parts[1].len > 0:
-    discard parseInt(parts[1], min)
-  if parts.len >= 3 and parts[2].len > 0:
-    discard parseInt(parts[2], pat)
+  if parts.len >= 1:
+    if parts[0].len == 0 or not parts[0].allCharsInSet(Digits):
+      raise newException(ValueError, "Invalid major version segment in '" & s & "': " & parts[0])
+    maj = strutils.parseInt(parts[0])
+
+  if parts.len >= 2:
+    if parts[1].len == 0 or not parts[1].allCharsInSet(Digits):
+      raise newException(ValueError, "Invalid minor version segment in '" & s & "': " & parts[1])
+    min = strutils.parseInt(parts[1])
+
+  if parts.len >= 3:
+    if parts[2].len == 0 or not parts[2].allCharsInSet(Digits):
+      raise newException(ValueError, "Invalid patch version segment in '" & s & "': " & parts[2])
+    pat = strutils.parseInt(parts[2])
 
   result = SemVersion(
     major: maj,
@@ -44,6 +61,38 @@ proc `$`*(v: SemVersion): string =
   if v.build.len > 0:
     result.add("+" & v.build)
 
+proc cmpPrerelease*(a, b: string): int =
+  ## Compares two SemVer 2.0 prerelease strings complying with section 11.4:
+  ## Identifiers consisting of only digits are compared numerically,
+  ## identifiers with letters/hyphens are compared lexically.
+  if a == b:
+    return 0
+  let aParts = a.split('.')
+  let bParts = b.split('.')
+  let minLen = min(aParts.len, bParts.len)
+
+  for i in 0..<minLen:
+    let ap = aParts[i]
+    let bp = bParts[i]
+    if ap != bp:
+      let aIsNum = ap.len > 0 and ap.allCharsInSet(Digits)
+      let bIsNum = bp.len > 0 and bp.allCharsInSet(Digits)
+      if aIsNum and bIsNum:
+        let aVal = strutils.parseInt(ap)
+        let bVal = strutils.parseInt(bp)
+        if aVal != bVal:
+          return system.cmp(aVal, bVal)
+      elif aIsNum and not bIsNum:
+        return -1
+      elif not aIsNum and bIsNum:
+        return 1
+      else:
+        let c = system.cmp(ap, bp)
+        if c != 0:
+          return c
+
+  return system.cmp(aParts.len, bParts.len)
+
 proc cmp*(a, b: SemVersion): int =
   if a.major != b.major:
     return system.cmp(a.major, b.major)
@@ -58,7 +107,7 @@ proc cmp*(a, b: SemVersion): int =
   if a.prerelease.len > 0 and b.prerelease.len == 0:
     return -1
   if a.prerelease.len > 0 and b.prerelease.len > 0:
-    return system.cmp(a.prerelease, b.prerelease)
+    return cmpPrerelease(a.prerelease, b.prerelease)
 
   return 0
 
@@ -68,32 +117,51 @@ proc `==`*(a, b: SemVersion): bool {.inline.} = cmp(a, b) == 0
 
 proc parseSingleConstraint*(token: string): SingleConstraint =
   var clean = token.strip()
+  if clean.len == 0:
+    raise newException(ValueError, "Empty constraint token")
+
   var op = voNone
+  var opFound = false
 
   if clean.startsWith(">="):
     op = voGe
     clean = clean[2..^1].strip()
+    opFound = true
   elif clean.startsWith("<="):
     op = voLe
     clean = clean[2..^1].strip()
+    opFound = true
   elif clean.startsWith("=="):
     op = voEq
     clean = clean[2..^1].strip()
+    opFound = true
   elif clean.startsWith("^="):
     op = voCaret
     clean = clean[2..^1].strip()
+    opFound = true
   elif clean.startsWith("~="):
     op = voTilde
     clean = clean[2..^1].strip()
+    opFound = true
   elif clean.startsWith(">"):
     op = voGt
     clean = clean[1..^1].strip()
+    opFound = true
   elif clean.startsWith("<"):
     op = voLt
     clean = clean[1..^1].strip()
+    opFound = true
   elif clean.startsWith("="):
     op = voEq
     clean = clean[1..^1].strip()
+    opFound = true
+
+  # Reject invalid operator symbols or consecutive operator punctuation
+  if clean.len > 0 and clean[0] in {'!', '=', '<', '>', '^', '~', '?', '@', '$', '%'}:
+    raise newException(ValueError, "Invalid or consecutive constraint operator in: " & token)
+
+  if clean.len == 0:
+    raise newException(ValueError, "Constraint missing version operand: " & token)
 
   var spec: VersionSpec
   if clean.startsWith("#head") or clean == "#head":
