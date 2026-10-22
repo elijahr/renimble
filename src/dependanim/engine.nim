@@ -1,10 +1,24 @@
 import std/[options, tables, strutils]
-import types, version, registry, upstream
+import types, version, registry, upstream, interval_tree
 
 proc isPackageIgnored*(pkgName: string, ignoreRules: seq[IgnoreRule]): bool =
   for rule in ignoreRules:
-    if rule.dependencyName.toLowerAscii() == pkgName.toLowerAscii():
+    if rule.dependencyName.toLowerAscii() == pkgName.toLowerAscii() and rule.versions.len == 0:
       return true
+  return false
+
+proc isVersionIgnored*(pkgName: string, ver: SemVersion, ignoreRules: seq[IgnoreRule]): bool =
+  for rule in ignoreRules:
+    if rule.dependencyName.toLowerAscii() == pkgName.toLowerAscii():
+      if rule.versions.len == 0:
+        return true
+      var tree = newVersionIntervalTree[string]()
+      for vRule in rule.versions:
+        let parsed = parseVersionConstraint(vRule)
+        for sc in parsed.constraints:
+          tree.insert(singleConstraintToInterval(sc), vRule)
+      if tree.queryPoint(ver).len > 0:
+        return true
   return false
 
 proc findTargetGroup*(depName: string, bump: BumpType, groups: Table[string, GroupConfig]): Option[string] =
@@ -52,6 +66,9 @@ proc resolveDependencyUpdate*(
     return none(UpdateProposal)
 
   let latest = latestOpt.get
+  if isVersionIgnored(dep.name, latest.semver, targetConfig.ignore):
+    return none(UpdateProposal)
+
   var curVersion = SemVersion()
   # Derive current version from lockfile or constraint
   if lockFile.isSome and lockFile.get.packages.hasKey(dep.name):

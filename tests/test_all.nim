@@ -8,3 +8,4 @@ import test_config
 import test_fixtures
 import test_gitops
 import test_adversarial
+import test_interval_tree
