@@ -60,15 +60,17 @@ proc resolveDependencyUpdate*(
 ): Option[UpdateProposal] =
   let cleanName = cleanPackageName(dep.name)
 
-  # Don't update "nim" compiler requirement itself unless explicitly configured
+  # Resolve repository URL:
+  var repoUrl = ""
+
+  # Compiler requirement "nim" handling
   if cleanName.toLowerAscii() == "nim":
-    return none(UpdateProposal)
+    if not targetConfig.updateCompilerRequirement:
+      return none(UpdateProposal)
+    repoUrl = "https://github.com/nim-lang/Nim"
 
   if isPackageIgnored(cleanName, targetConfig.ignore):
     return none(UpdateProposal)
-
-  # Resolve repository URL:
-  var repoUrl = ""
 
   # 1. Atlas nameOverrides check
   if atlasConfig.isSome and atlasConfig.get.nameOverrides.hasKey(cleanName.toLowerAscii()):

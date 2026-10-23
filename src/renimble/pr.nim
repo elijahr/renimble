@@ -1,4 +1,4 @@
-import std/[strutils, options, osproc, streams]
+import std/[strutils, options, osproc, streams, json]
 import types
 
 type
@@ -80,6 +80,21 @@ proc generatePrBody*(proposals: seq[UpdateProposal]): string =
   result.add("- `@renimble recreate` will recreate this PR and recalculate constraints\n")
   result.add("- `@renimble close` will close this PR and ignore this version bump\n")
   result.add("</details>\n")
+
+  # Append hidden metadata HTML comment for closed PR tracking & dismissal recovery
+  result.add("\n<!-- renimble-metadata\n")
+  var jMeta = newJObject()
+  var jProposals = newJArray()
+  for p in proposals:
+    var jP = newJObject()
+    jP["package"] = %cleanPkgName(p.dependency.name)
+    jP["currentVersion"] = %p.currentVersion
+    jP["targetVersion"] = %p.targetVersion
+    jP["targetVcsRevision"] = %p.targetVcsRevision
+    jP["bumpType"] = %($p.bumpType)
+    jProposals.add(jP)
+  jMeta["proposals"] = jProposals
+  result.add(pretty(jMeta, indent = 2) & "\n-->\n")
 
 # ==============================================================================
 # Git Operations Engine

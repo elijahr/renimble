@@ -21,7 +21,8 @@ proc defaultTargetConfig*(): UpdateTargetConfig =
     labels: @["dependencies", "nim"],
     reviewers: @[],
     assignees: @[],
-    openPullRequestsLimit: 10
+    openPullRequestsLimit: 10,
+    updateCompilerRequirement: false
   )
 
 proc parseSimpleYamlConfig*(content: string): RenimbleConfig =
@@ -85,6 +86,9 @@ proc parseSimpleYamlConfig*(content: string): RenimbleConfig =
         currentTarget.openPullRequestsLimit = parseInt(trimmed[25..^1].strip())
       except CatchableError:
         discard
+    elif trimmed.startsWith("update-compiler-requirement:"):
+      let v = trimmed[27..^1].strip().toLowerAscii()
+      currentTarget.updateCompilerRequirement = (v == "true" or v == "yes")
     elif currentSection == "schedule":
       if trimmed.startsWith("interval:"):
         let iv = trimmed[9..^1].strip().toLowerAscii()

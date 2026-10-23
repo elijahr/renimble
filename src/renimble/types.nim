@@ -102,6 +102,7 @@ type
     reviewers*: seq[string]
     assignees*: seq[string]
     openPullRequestsLimit*: int
+    updateCompilerRequirement*: bool
 
   RenimbleConfig* = object
     version*: int

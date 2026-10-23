@@ -1,5 +1,5 @@
-import std/[unittest, tables, os]
-import ../src/renimble/[types, version, engine, dismissal, atlas, declarative_parser, rewriter]
+import std/[unittest, tables, os, strutils, json]
+import ../src/renimble/[types, version, engine, dismissal, atlas, declarative_parser, rewriter, compiler, pr]
 
 suite "Advanced Dependency Engine Features":
 
@@ -138,3 +138,57 @@ requires "https://github.com/nim-lang/zip >= 0.3.1"
     let reParsed = parseAtlasLock(serialized)
     check reParsed.packages["zippy"].commit == "e5f6g7h8"
     check reParsed.packages["zippy"].version == "0.11.0"
+
+  # ---------------------------------------------------------------------------
+  # 6. Hidden PR Metadata Extraction (Renovate Pattern)
+  # ---------------------------------------------------------------------------
+  test "Extract metadata from hidden HTML comment in PR body":
+    let p = UpdateProposal(
+      dependency: Dependency(name: "zippy"),
+      currentVersion: "0.10.4",
+      targetVersion: "0.11.0",
+      targetVcsRevision: "abcdef123456",
+      bumpType: btMinor
+    )
+    let body = generatePrBody(@[p])
+    check "<!-- renimble-metadata" in body
+
+    let extracted = extractMetadataFromPrBody(body)
+    check "zippy:0.11.0" in extracted
+    check "renimble/zippy-0.11.0" in extracted
+
+    var jGh = newJArray()
+    var jPr = newJObject()
+    jPr["headRefName"] = %"renimble/group-core"
+    jPr["mergedAt"] = newJNull()
+    jPr["body"] = %body
+    jGh.add(jPr)
+
+    let dismissedFromGh = parseGhClosedPrs($jGh)
+    check "zippy:0.11.0" in dismissedFromGh
+    check isVersionDismissed("zippy", "0.11.0", dismissedFromGh)
+
+  # ---------------------------------------------------------------------------
+  # 7. Nim Compiler Version Updaters (Workflows, asdf, mise)
+  # ---------------------------------------------------------------------------
+  test "Update workflow nim-version step":
+    let wf = """
+    steps:
+      - uses: jiro4989/setup-nim-action@v2
+        with:
+          nim-version: '2.0.8'
+"""
+    let (updatedWf, mod1) = updateWorkflowNimVersion(wf, "2.2.0")
+    check mod1
+    check "nim-version: '2.2.0'" in updatedWf
+
+  test "Update .tool-versions and .mise.toml":
+    let tv = "nim 2.0.8\nnodejs 20.0.0\n"
+    let (updatedTv, mod2) = updateToolVersionsNim(tv, "2.2.0")
+    check mod2
+    check "nim 2.2.0" in updatedTv
+
+    let mise = "[tools]\nnim = \"2.0.8\"\n"
+    let (updatedMise, mod3) = updateMiseTomlNim(mise, "2.2.0")
+    check mod3
+    check "nim = \"2.2.0\"" in updatedMise
