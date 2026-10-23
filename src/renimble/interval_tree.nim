@@ -117,6 +117,8 @@ proc singleConstraintToInterval*(c: SingleConstraint): VersionInterval =
   case c.op
   of voNone, voEq:
     result = newInterval(bound(target, true), bound(target, true))
+  of voNe:
+    result = newInterval(bound(target, false), bound(target, false))
   of voGt:
     result = newInterval(bound(target, false), posInf())
   of voGe:

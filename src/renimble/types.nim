@@ -4,6 +4,7 @@ type
   VersionOp* = enum
     voNone,      # No operator (exact or untyped)
     voEq,        # ==
+    voNe,        # !=
     voLt,        # <
     voLe,        # <=
     voGt,        # >
@@ -123,6 +124,7 @@ type
     bumpType*: BumpType
     groupName*: Option[string]
     changelogUrl*: Option[string]
+    isLockfileOnly*: bool
 
   RegistryPackage* = object
     name*: string

@@ -41,3 +41,16 @@ proc getLatestRelease*(tags: seq[UpstreamTag], currentConstraint: VersionConstra
       return some(tag)
 
   return some(tags[0])
+
+proc fetchRemoteHeadCommit*(repoUrl: string): Option[string] =
+  ## Queries git ls-remote to find the commit SHA of the default branch / HEAD
+  let cmd = "git ls-remote " & quoteShell(repoUrl) & " HEAD"
+  let (outp, exitCode) = execCmdEx(cmd)
+  if exitCode == 0:
+    for line in outp.splitLines():
+      let parts = line.split('\t')
+      if parts.len == 2:
+        let sha = parts[0].strip()
+        if sha.len >= 7:
+          return some(sha)
+  return none(string)

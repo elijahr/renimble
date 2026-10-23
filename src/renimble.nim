@@ -1,5 +1,5 @@
 import std/[os, parseopt, strutils, options, tables]
-import renimble/[types, version, declarative_parser, rewriter, lockfile, config, registry, engine, pr, github_actions]
+import renimble/[types, version, declarative_parser, rewriter, lockfile, config, registry, engine, pr, github_actions, atlas, dismissal]
 
 const RenimbleVersion = "0.1.0"
 
@@ -101,10 +101,23 @@ proc main() =
         echo "==> [WARN] Lockfile integrity: " & issue
       lockFileOpt = some(parsedLock)
 
+    let atlasConfigOpt = loadAtlasConfig(searchDir)
+    if atlasConfigOpt.isSome:
+      echo "==> Detected Atlas workspace configuration."
+
+    let atlasLockPath = searchDir / "atlas.lock"
+    var atlasLockOpt: Option[AtlasLock] = loadAtlasLock(atlasLockPath)
+    if atlasLockOpt.isSome:
+      echo "==> Found Atlas lockfile: " & atlasLockPath
+
+    let dismissals = fetchClosedPrDismissals(searchDir)
+    if dismissals.len > 0:
+      echo "==> Loaded " & $dismissals.len & " closed PR dismissal(s) to suppress duplicate notifications."
+
     echo "==> Checking " & $manifest.dependencies.len & " dependencies..."
     var updates: seq[UpdateProposal] = @[]
     for dep in manifest.dependencies:
-      let propOpt = resolveDependencyUpdate(dep, target, reg, lockFileOpt)
+      let propOpt = resolveDependencyUpdate(dep, target, reg, lockFileOpt, atlasConfigOpt, dismissals)
       if propOpt.isSome:
         updates.add(propOpt.get)
 
@@ -115,7 +128,8 @@ proc main() =
     totalUpdates += updates.len
     echo "\n=== Available Updates (" & $updates.len & ") ==="
     for u in updates:
-      echo "  • " & u.dependency.name & ": " & u.currentVersion & " -> " & u.targetVersion & " (" & $u.bumpType & ")"
+      let lockOnlyTag = if u.isLockfileOnly: " [lockfile-only]" else: ""
+      echo "  • " & u.dependency.name & ": " & u.currentVersion & " -> " & u.targetVersion & " (" & $u.bumpType & ")" & lockOnlyTag
     echo "==============================\n"
 
     if dryRun or checkOnly:
@@ -123,14 +137,20 @@ proc main() =
 
     # Apply updates
     var updatedNimble = nimbleContent
+    var modifiedFiles: seq[string] = @[]
+    var nimbleModified = false
+
     for u in updates:
-      let newConstraint = updateConstraintString(u.dependency.rawConstraint, parseSemVersion(u.targetVersion))
-      updatedNimble = rewriteNimbleFile(updatedNimble, u.dependency.name, newConstraint)
+      if not u.isLockfileOnly:
+        let newConstraint = updateConstraintString(u.dependency.rawConstraint, u.targetVersion)
+        updatedNimble = rewriteNimbleFile(updatedNimble, u.dependency.name, newConstraint)
+        nimbleModified = true
 
-    writeFile(nimblePath, updatedNimble)
-    echo "==> Updated " & nimblePath & " in-place."
+    if nimbleModified:
+      writeFile(nimblePath, updatedNimble)
+      echo "==> Updated " & nimblePath & " in-place."
+      modifiedFiles.add(nimblePath)
 
-    var modifiedFiles: seq[string] = @[nimblePath]
     if lockFileOpt.isSome:
       var lock = lockFileOpt.get
       for u in updates:
@@ -138,6 +158,14 @@ proc main() =
       writeFile(lockPath, serializeLockFile(lock))
       echo "==> Updated " & lockPath & " in-place."
       modifiedFiles.add(lockPath)
+
+    if atlasLockOpt.isSome:
+      var alock = atlasLockOpt.get
+      for u in updates:
+        updateAtlasLock(alock, cleanPackageName(u.dependency.name), u.targetVcsRevision, u.targetVersion)
+      writeFile(atlasLockPath, serializeAtlasLock(alock))
+      echo "==> Updated " & atlasLockPath & " in-place."
+      modifiedFiles.add(atlasLockPath)
 
     if enableGit or isGitHubActions():
       echo "==> [GitOps] Creating branch and committing updates..."

@@ -9,3 +9,4 @@ import test_fixtures
 import test_gitops
 import test_adversarial
 import test_interval_tree
+import test_advanced_features

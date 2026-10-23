@@ -1,0 +1,45 @@
+name: Renimble PR Commands
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  handle-comment:
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '@renimble')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Process Renimble Command
+        shell: bash
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Processing comment: $COMMENT_BODY for PR #$PR_NUMBER"
+          CMD=$(echo "$COMMENT_BODY" | tr '[:upper:]' '[:lower:]')
+
+          if [[ "$CMD" == *"@renimble close"* ]]; then
+            echo "Closing PR #$PR_NUMBER..."
+            gh pr close "$PR_NUMBER" --comment "Closed per @renimble command. This version bump is now dismissed and will not be re-opened."
+          elif [[ "$CMD" == *"@renimble ignore"* ]]; then
+            echo "Dismissing version bump for PR #$PR_NUMBER..."
+            gh pr close "$PR_NUMBER" --comment "Ignored version per @renimble command. Future notifications for this version are suppressed."
+          elif [[ "$CMD" == *"@renimble rebase"* ]]; then
+            echo "Rebasing PR #$PR_NUMBER..."
+            gh pr comment "$PR_NUMBER" --body "Rebase requested. Triggering rebase workflow..."
+          else
+            echo "Unrecognized @renimble command."
+            gh pr comment "$PR_NUMBER" --body "Supported commands: \`@renimble close\`, \`@renimble ignore this version\`, \`@renimble rebase\`"
+          fi

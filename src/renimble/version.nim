@@ -135,6 +135,10 @@ proc parseSingleConstraint*(token: string): SingleConstraint =
     op = voEq
     clean = clean[2..^1].strip()
     opFound = true
+  elif clean.startsWith("!="):
+    op = voNe
+    clean = clean[2..^1].strip()
+    opFound = true
   elif clean.startsWith("^="):
     op = voCaret
     clean = clean[2..^1].strip()
@@ -202,6 +206,8 @@ proc satisfiesSingle*(v: SemVersion, c: SingleConstraint): bool =
   case c.op
   of voNone, voEq:
     return v == target
+  of voNe:
+    return v != target
   of voLt:
     return v < target
   of voLe:
@@ -252,6 +258,7 @@ proc updateConstraintString*(rawConstraint: string, targetVersion: SemVersion): 
     let opStr = case c.op
       of voNone: ""
       of voEq: "== "
+      of voNe: "!= "
       of voLt: "< "
       of voLe: "<= "
       of voGt: "> "
@@ -270,3 +277,16 @@ proc updateConstraintString*(rawConstraint: string, targetVersion: SemVersion): 
         parts.add(opStr & (if c.spec.kind == vkSemVer: $c.spec.semver else: c.spec.vcsRef))
 
   result = parts.join(" & ")
+
+proc updateConstraintString*(rawConstraint: string, targetVersionStr: string): string =
+  let clean = rawConstraint.strip()
+  if clean.startsWith("#"):
+    if targetVersionStr.startsWith("#"):
+      return targetVersionStr
+    else:
+      return "#" & targetVersionStr
+  try:
+    let sem = parseSemVersion(targetVersionStr)
+    return updateConstraintString(rawConstraint, sem)
+  except ValueError:
+    return targetVersionStr

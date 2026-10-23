@@ -17,12 +17,23 @@ type
     success*: bool
     error*: string
 
+proc cleanPkgName(name: string): string =
+  if name.startsWith("http://") or name.startsWith("https://") or name.startsWith("git://") or name.startsWith("git@"):
+    var clean = name
+    if clean.endsWith(".git"):
+      clean = clean[0..^5]
+    let lastSlash = clean.rfind('/')
+    if lastSlash != -1:
+      return clean[(lastSlash + 1)..^1]
+    return clean
+  return name
+
 proc generateBranchName*(proposals: seq[UpdateProposal], groupName: Option[string] = none(string)): string =
   if groupName.isSome:
     return "renimble/group-" & groupName.get
   elif proposals.len == 1:
     let p = proposals[0]
-    return "renimble/" & p.dependency.name & "-" & p.targetVersion
+    return "renimble/" & cleanPkgName(p.dependency.name) & "-" & p.targetVersion
   else:
     return "renimble/updates"
 
