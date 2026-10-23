@@ -1,4 +1,4 @@
-name: Dependanim Dependency Updates
+name: Renimble Dependency Updates
 
 on:
   schedule:
@@ -15,8 +15,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Run dependanim
+      - name: Run renimble
         uses: ./
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          config-path: '.github/dependanim.yml'
+          config-path: '.github/renimble.yml'

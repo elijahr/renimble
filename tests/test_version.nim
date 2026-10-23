@@ -1,5 +1,5 @@
 import std/unittest
-import ../src/dependanim/[types, version]
+import ../src/renimble/[types, version]
 
 suite "Nimble Version & Constraint Engine":
   test "SemVer parsing standard versions":

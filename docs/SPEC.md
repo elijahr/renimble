@@ -1,6 +1,6 @@
-# Dependanim: Core Technical Specification
+# Renimble: Core Technical Specification
 **Organization**: `axiomantic`  
-**Repository**: `dependanim`  
+**Repository**: `renimble`  
 **License**: MIT  
 **Language**: Nim (>= 2.0.0)
 
@@ -16,7 +16,7 @@ Modern CI/CD pipelines rely on automated dependency updaters like GitHub Dependa
    - `nimble.lock` lockfile updating and git revision pinning.
    - The official Nim package registry (`packages.json`).
 
-`dependanim` is the definitive automated dependency updater engineered natively in Nim for Nimble projects. It provides first-class `.nimble` parsing, AST-preserving in-place updates, `nimble.lock` synchronization, SemVer resolution, grouped Pull Requests, and a turnkey GitHub Actions Marketplace integration.
+`renimble` is the definitive automated dependency updater engineered natively in Nim for Nimble projects. It provides first-class `.nimble` parsing, AST-preserving in-place updates, `nimble.lock` synchronization, SemVer resolution, grouped Pull Requests, and a turnkey GitHub Actions Marketplace integration.
 
 ---
 
@@ -24,7 +24,7 @@ Modern CI/CD pipelines rely on automated dependency updaters like GitHub Dependa
 
 ```mermaid
 flowchart TD
-    Config[".github/dependanim.yml"] --> Runner["Dependanim Runner Engine"]
+    Config[".github/renimble.yml"] --> Runner["Renimble Runner Engine"]
     CLI["CLI Flags / GitHub Actions Inputs"] --> Runner
     
     subgraph Discovery["1. Discovery & Parsing"]
@@ -70,14 +70,15 @@ flowchart TD
 ### Module Layout
 ```
 src/
-├── dependanim.nim                 # Main CLI entrypoint
-└── dependanim/
+├── renimble.nim                   # Main CLI entrypoint
+└── renimble/
     ├── types.nim                  # Core domain records & types
-    ├── config.nim                 # .github/dependanim.yml parser
+    ├── config.nim                 # .github/renimble.yml parser
     ├── version.nim                # SemVer parser, operators, & constraint solver
     ├── declarative_parser.nim     # High-fidelity .nimble declarative parser
     ├── rewriter.nim               # Comment & formatting-preserving .nimble rewriter
-    ├── lockfile.nim               # nimble.lock JSON parser & serializer
+    ├── interval_tree.nim          # SemVer interval tree range algebra
+    ├── lockfile.nim               # nimble.lock JSON parser, serializer, & cycle validator
     ├── registry.nim               # Nim package registry indexer & local cache
     ├── upstream.nim               # VCS / Git / GitHub tag and release query
     ├── engine.nim                 # Dependency update resolution & group clustering
@@ -89,7 +90,7 @@ src/
 
 ## 3. Nimble Version & Constraint Engine (`version.nim`)
 
-`dependanim` mirrors and strictly complies with `nim-lang/nimble`'s `version.nim` semantics.
+`renimble` mirrors and strictly complies with `nim-lang/nimble`'s `version.nim` semantics.
 
 ### 3.1 Supported Constraint Operators
 - **Comparison**:
@@ -121,7 +122,7 @@ Given current version $V_{curr}$ and latest discovered upstream version $V_{late
 
 ## 4. In-Place AST & Formatting Preservation (`rewriter.nim`)
 
-A critical differentiator of `dependanim` is that it **does not destructively overwrite** `.nimble` files. Nimble package files are Nim scripts that often include:
+A critical differentiator of `renimble` is that it **does not destructively overwrite** `.nimble` files. Nimble package files are Nim scripts that often include:
 - Custom comments (`# ...`) and docstrings
 - Task blocks (`task test, "..."`, `task build, "..."`)
 - Conditional logic (`when defined(windows): ...`)
@@ -151,13 +152,13 @@ Schema structure:
   }
 }
 ```
-`dependanim` automatically synchronizes `nimble.lock` alongside `.nimble` updates, fetching the exact Git commit SHA corresponding to the resolved release tag.
+`renimble` automatically synchronizes `nimble.lock` alongside `.nimble` updates, fetching the exact Git commit SHA corresponding to the resolved release tag.
 
 ---
 
-## 6. Configuration Schema (`.github/dependanim.yml`)
+## 6. Configuration Schema (`.github/renimble.yml`)
 
-The configuration lives in `.github/dependanim.yml` or `.github/dependanim.yaml`:
+The configuration lives in `.github/renimble.yml` or `.github/renimble.yaml`:
 
 ```yaml
 version: 1
@@ -205,9 +206,9 @@ updates:
 
 ## 7. GitHub Actions Integration (`action.yml`)
 
-`dependanim` is packaged as a composite GitHub Action and downloadable binary:
+`renimble` is packaged as a composite GitHub Action and downloadable binary:
 ```yaml
-name: 'Dependanim: Nim Dependency Updater'
+name: 'Renimble: Nim Dependency Updater'
 description: 'Automated .nimble and nimble.lock dependency updater for Nim'
 inputs:
   github-token:
@@ -215,9 +216,9 @@ inputs:
     required: true
     default: ${{ github.token }}
   config-path:
-    description: 'Path to dependanim configuration file'
+    description: 'Path to renimble configuration file'
     required: false
-    default: '.github/dependanim.yml'
+    default: '.github/renimble.yml'
   dry-run:
     description: 'Perform dependency check without opening PRs'
     required: false

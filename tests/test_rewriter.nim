@@ -1,5 +1,5 @@
 import std/[unittest, strutils]
-import ../src/dependanim/rewriter
+import ../src/renimble/rewriter
 
 suite "In-Place Nimble Rewriter":
   test "Preserve comments and indentation":

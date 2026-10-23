@@ -1,5 +1,5 @@
 import std/unittest
-import ../src/dependanim/[version, interval_tree]
+import ../src/renimble/[version, interval_tree]
 
 suite "SemVer Interval Tree & Range Algebra":
   test "Convert SingleConstraint to VersionInterval":

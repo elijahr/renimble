@@ -5,7 +5,7 @@ author        = "Axiomantic"
 description   = "Definitive automated dependency updater for Nim projects (.nimble & nimble.lock)"
 license       = "MIT"
 srcDir        = "src"
-bin           = @["dependanim"]
+bin           = @["renimble"]
 
 # Dependencies
 
@@ -18,4 +18,4 @@ task test, "Run the full test suite":
   exec "nim c -r tests/test_all.nim"
 
 task buildRelease, "Build optimized release binary":
-  exec "nim c -d:release --opt:speed -o:bin/dependanim src/dependanim.nim"
+  exec "nim c -d:release --opt:speed -o:bin/renimble src/renimble.nim"

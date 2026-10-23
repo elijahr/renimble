@@ -19,12 +19,12 @@ type
 
 proc generateBranchName*(proposals: seq[UpdateProposal], groupName: Option[string] = none(string)): string =
   if groupName.isSome:
-    return "dependanim/group-" & groupName.get
+    return "renimble/group-" & groupName.get
   elif proposals.len == 1:
     let p = proposals[0]
-    return "dependanim/" & p.dependency.name & "-" & p.targetVersion
+    return "renimble/" & p.dependency.name & "-" & p.targetVersion
   else:
-    return "dependanim/updates"
+    return "renimble/updates"
 
 proc generateCommitMessage*(proposals: seq[UpdateProposal], prefix: string = "chore(deps)"): string =
   if proposals.len == 1:
@@ -46,7 +46,7 @@ proc generatePrTitle*(proposals: seq[UpdateProposal], groupName: Option[string] 
     return "chore(deps): bump " & $proposals.len & " dependencies"
 
 proc generatePrBody*(proposals: seq[UpdateProposal]): string =
-  result = "Bumps dependencies using **[dependanim](https://github.com/axiomantic/dependanim)**.\n\n"
+  result = "Bumps dependencies using **[renimble](https://github.com/axiomantic/renimble)**.\n\n"
   result.add("### Updates\n\n")
   result.add("| Package | From | To | Type | Links |\n")
   result.add("|:---|:---|:---|:---|:---|\n")
@@ -63,11 +63,11 @@ proc generatePrBody*(proposals: seq[UpdateProposal]): string =
     result.add("| `" & p.dependency.name & "` | `" & p.currentVersion & "` | `" & p.targetVersion & "` | " & bumpStr & " | " & cl & " |\n")
 
   result.add("\n---\n")
-  result.add("<details>\n<summary>Dependanim Commands & Options</summary>\n\n")
-  result.add("You can trigger Dependanim actions by commenting on this PR:\n")
-  result.add("- `@dependanim rebase` will rebase this branch against the target branch\n")
-  result.add("- `@dependanim recreate` will recreate this PR and recalculate constraints\n")
-  result.add("- `@dependanim close` will close this PR and ignore this version bump\n")
+  result.add("<details>\n<summary>Renimble Commands & Options</summary>\n\n")
+  result.add("You can trigger Renimble actions by commenting on this PR:\n")
+  result.add("- `@renimble rebase` will rebase this branch against the target branch\n")
+  result.add("- `@renimble recreate` will recreate this PR and recalculate constraints\n")
+  result.add("- `@renimble close` will close this PR and ignore this version bump\n")
   result.add("</details>\n")
 
 # ==============================================================================
@@ -135,7 +135,7 @@ proc gitStageFiles*(files: openArray[string], workingDir: string = ""): GitComma
     args.add(f)
   return runGit(args, workingDir)
 
-proc gitCommit*(message: string, authorName: string = "dependanim[bot]", authorEmail: string = "dependanim[bot]@users.noreply.github.com", workingDir: string = ""): GitCommandResult =
+proc gitCommit*(message: string, authorName: string = "renimble[bot]", authorEmail: string = "renimble[bot]@users.noreply.github.com", workingDir: string = ""): GitCommandResult =
   ## Commits staged changes with custom author info.
   let args = @[
     "-c", "user.name=" & authorName,
@@ -168,8 +168,8 @@ proc executeGitOps*(
   modifiedFiles: seq[string],
   baseBranch: string = "main",
   groupName: Option[string] = none(string),
-  authorName: string = "dependanim[bot]",
-  authorEmail: string = "dependanim[bot]@users.noreply.github.com",
+  authorName: string = "renimble[bot]",
+  authorEmail: string = "renimble[bot]@users.noreply.github.com",
   workingDir: string = "",
   commitPrefix: string = "chore(deps)"
 ): GitOpsReport =

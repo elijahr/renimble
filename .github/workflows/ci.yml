@@ -33,5 +33,5 @@ jobs:
 
       - name: Build Binary
         run: |
-          nim c -d:release --opt:speed -o:bin/dependanim src/dependanim.nim
-          ./bin/dependanim --version
+          nim c -d:release --opt:speed -o:bin/renimble src/renimble.nim
+          ./bin/renimble --version

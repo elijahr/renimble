@@ -8,7 +8,7 @@ type PackageRegistry* = object
   cachePath*: string
 
 proc newPackageRegistry*(cacheDir: string = ""): PackageRegistry =
-  let actualDir = if cacheDir.len > 0: cacheDir else: getCacheDir("dependanim")
+  let actualDir = if cacheDir.len > 0: cacheDir else: getCacheDir("renimble")
   createDir(actualDir)
   result.cachePath = actualDir / "packages.json"
   result.packages = initTable[string, RegistryPackage]()

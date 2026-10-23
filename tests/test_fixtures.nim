@@ -1,5 +1,5 @@
 import unittest, std/[os, strutils, options]
-import ../src/dependanim/[types, declarative_parser, rewriter]
+import ../src/renimble/[types, declarative_parser, rewriter]
 
 suite "Real-World Fixtures & Manifest Parsing":
   let fixturesDir = currentSourcePath().parentDir / "fixtures"

@@ -1,16 +1,16 @@
 import std/[os, parseopt, strutils, options, tables]
-import dependanim/[types, version, declarative_parser, rewriter, lockfile, config, registry, engine, pr, github_actions]
+import renimble/[types, version, declarative_parser, rewriter, lockfile, config, registry, engine, pr, github_actions]
 
-const DependanimVersion = "0.1.0"
+const RenimbleVersion = "0.1.0"
 
 proc printHelp() =
   echo """
-dependanim - Automated Dependency Updater for Nim & Nimble (v""" & DependanimVersion & """)
+renimble - Automated Dependency Updater for Nim & Nimble (v""" & RenimbleVersion & """)
 Usage:
-  dependanim [options]
+  renimble [options]
 
 Options:
-  -c, --config:<path>   Path to configuration file (default: .github/dependanim.yml)
+  -c, --config:<path>   Path to configuration file (default: .github/renimble.yml)
   -d, --dry-run         Check for updates without modifying files or opening PRs
   -k, --check           Check for updates and exit with code 1 if updates found
   -g, --git             Create git branch and commit changes for updates
@@ -24,8 +24,15 @@ proc findNimbleFile(dir: string): Option[string] =
       return some(path)
   return none(string)
 
+proc resolveDefaultConfig(): string =
+  if fileExists(".github/renimble.yml"):
+    return ".github/renimble.yml"
+  if fileExists(".github/dependanim.yml"):
+    return ".github/dependanim.yml"
+  return ".github/renimble.yml"
+
 proc main() =
-  var configPath = ".github/dependanim.yml"
+  var configPath = resolveDefaultConfig()
   var dryRun = false
   var checkOnly = false
   var enableGit = false
@@ -41,7 +48,7 @@ proc main() =
         printHelp()
         quit(0)
       of "v", "version":
-        echo "dependanim " & DependanimVersion
+        echo "renimble " & RenimbleVersion
         quit(0)
       of "c", "config":
         configPath = p.val
@@ -57,7 +64,7 @@ proc main() =
     of cmdArgument:
       discard
 
-  echo "==> Running dependanim v" & DependanimVersion
+  echo "==> Running renimble v" & RenimbleVersion
   let conf = loadConfig(configPath)
   echo "==> Loaded config with " & $conf.updates.len & " target(s)"
 
@@ -138,8 +145,8 @@ proc main() =
         updates,
         modifiedFiles,
         baseBranch = target.targetBranch,
-        authorName = "dependanim[bot]",
-        authorEmail = "dependanim[bot]@users.noreply.github.com",
+        authorName = "renimble[bot]",
+        authorEmail = "renimble[bot]@users.noreply.github.com",
         workingDir = searchDir,
         commitPrefix = target.commitMessage.prefix
       )

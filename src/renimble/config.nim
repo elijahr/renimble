@@ -24,9 +24,9 @@ proc defaultTargetConfig*(): UpdateTargetConfig =
     openPullRequestsLimit: 10
   )
 
-proc parseSimpleYamlConfig*(content: string): DependanimConfig =
-  ## Parses .github/dependanim.yml using a resilient, dependency-free line parser.
-  result = DependanimConfig(version: 1, updates: @[])
+proc parseSimpleYamlConfig*(content: string): RenimbleConfig =
+  ## Parses .github/renimble.yml using a resilient, dependency-free line parser.
+  result = RenimbleConfig(version: 1, updates: @[])
   var currentTarget = defaultTargetConfig()
   var hasTarget = false
 
@@ -136,9 +136,9 @@ proc parseSimpleYamlConfig*(content: string): DependanimConfig =
     # If no explicit updates section, provide default target
     result.updates.add(defaultTargetConfig())
 
-proc loadConfig*(path: string): DependanimConfig =
+proc loadConfig*(path: string): RenimbleConfig =
   if fileExists(path):
     let content = readFile(path)
     result = parseSimpleYamlConfig(content)
   else:
-    result = DependanimConfig(version: 1, updates: @[defaultTargetConfig()])
+    result = RenimbleConfig(version: 1, updates: @[defaultTargetConfig()])

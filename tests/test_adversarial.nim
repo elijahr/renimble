@@ -1,5 +1,5 @@
 import std/[unittest, tables, strutils]
-import ../src/dependanim/[types, version, declarative_parser, rewriter, lockfile]
+import ../src/renimble/[types, version, declarative_parser, rewriter, lockfile]
 
 suite "Adversarial Testing Suite & Negative Controls":
 
@@ -252,7 +252,7 @@ suite "Adversarial Testing Suite & Negative Controls":
       "Usage:",
       "  requires \"zippy >= 0.10.4\" in user docs",
       "\"\"\":",
-      "  exec \"nim doc src/dependanim.nim\""
+      "  exec \"nim doc src/renimble.nim\""
     ].join("\n")
 
     let expected = [
@@ -263,7 +263,7 @@ suite "Adversarial Testing Suite & Negative Controls":
       "Usage:",
       "  requires \"zippy >= 0.10.4\" in user docs",
       "\"\"\":",
-      "  exec \"nim doc src/dependanim.nim\""
+      "  exec \"nim doc src/renimble.nim\""
     ].join("\n")
 
     let actual = rewriteNimbleFile(original, "zippy", ">= 0.11.0")

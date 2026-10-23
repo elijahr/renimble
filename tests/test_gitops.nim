@@ -1,5 +1,5 @@
 import unittest, std/[os, strutils, options]
-import ../src/dependanim/[types, pr]
+import ../src/renimble/[types, pr]
 
 suite "Git Operations & PR Engine":
   test "runGit checks git version":
@@ -15,8 +15,8 @@ suite "Git Operations & PR Engine":
       targetVersion: "0.11.0",
       bumpType: btMinor
     )
-    check generateBranchName(@[p1]) == "dependanim/zippy-0.11.0"
-    check generateBranchName(@[p1], some("core")) == "dependanim/group-core"
+    check generateBranchName(@[p1]) == "renimble/zippy-0.11.0"
+    check generateBranchName(@[p1], some("core")) == "renimble/group-core"
 
     let p2 = UpdateProposal(
       dependency: Dependency(name: "yaml"),
@@ -24,7 +24,7 @@ suite "Git Operations & PR Engine":
       targetVersion: "1.1.0",
       bumpType: btMinor
     )
-    check generateBranchName(@[p1, p2]) == "dependanim/updates"
+    check generateBranchName(@[p1, p2]) == "renimble/updates"
 
   test "generateCommitMessage":
     let p1 = UpdateProposal(
@@ -60,10 +60,10 @@ suite "Git Operations & PR Engine":
 
     let body = generatePrBody(@[p1])
     check "| `zippy` | `0.10.4` | `0.11.0` | Minor | [Changelog](https://github.com/guzba/zippy/releases) |" in body
-    check "@dependanim rebase" in body
+    check "@renimble rebase" in body
 
   test "Isolated local GitOps workflow in temp git repository":
-    let tmpDir = getTempDir() / "dependanim_gitops_test_" & $getCurrentProcessId()
+    let tmpDir = getTempDir() / "renimble_gitops_test_" & $getCurrentProcessId()
     createDir(tmpDir)
 
     try:
@@ -114,8 +114,8 @@ suite "Git Operations & PR Engine":
       )
 
       check opsReport.success
-      check opsReport.branchName == "dependanim/zippy-0.11.0"
-      check gitCurrentBranch(tmpDir) == "dependanim/zippy-0.11.0"
+      check opsReport.branchName == "renimble/zippy-0.11.0"
+      check gitCurrentBranch(tmpDir) == "renimble/zippy-0.11.0"
       check not gitIsDirty(tmpDir)
 
       # Verify commit message in git log

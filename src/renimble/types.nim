@@ -102,9 +102,11 @@ type
     assignees*: seq[string]
     openPullRequestsLimit*: int
 
-  DependanimConfig* = object
+  RenimbleConfig* = object
     version*: int
     updates*: seq[UpdateTargetConfig]
+
+  DependanimConfig* = RenimbleConfig
 
   BumpType* = enum
     btNone,

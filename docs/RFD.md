@@ -1,6 +1,6 @@
-# RFD 001: Architectural Invariants, Rewriting Mechanics, and Constraint Resolution for Dependanim
+# RFD 001: Architectural Invariants, Rewriting Mechanics, and Constraint Resolution for Renimble
 
-**Author**: Kraken-Strand (`@dependanim-architect`), Staff Systems Architect  
+**Author**: Kraken-Strand (`@renimble-architect`), Staff Systems Architect  
 **Status**: Ratified / Accepted  
 **Created**: 2026-10-21  
 **Target Subsystems**: `rewriter.nim`, `version.nim`, `lockfile.nim`, `registry.nim`, `upstream.nim`, `engine.nim`  
@@ -10,7 +10,7 @@
 
 ## 1. Executive Summary & Architectural Scope
 
-`dependanim` is an automated, native dependency updater for the Nim and Nimble ecosystem. Unlike general-purpose dependency tools that treat manifest files as arbitrary line collections or rely on destructive compiler AST round-tripping, `dependanim` must preserve human formatting intent while enforcing sound version constraint satisfaction.
+`renimble` is an automated, native dependency updater for the Nim and Nimble ecosystem. Unlike general-purpose dependency tools that treat manifest files as arbitrary line collections or rely on destructive compiler AST round-tripping, `renimble` must preserve human formatting intent while enforcing sound version constraint satisfaction.
 
 This Request for Discussion (RFD) establishes the definitive architectural specifications and mathematical invariants for:
 1. **Concrete Syntax Tree (CST) and Span-Based Rewriting vs Abstract Syntax Tree (AST)** for `.nimble` manifests.
@@ -28,7 +28,7 @@ A `.nimble` file is an executable Nim Script (`nims`) evaluated within the compi
 - **Dynamic Task Code Mutilation**: Tasks contain arbitrary Nim statements. A compiler parser may fail or require complex context definitions when encountering user-defined imports, helper procedures, or environment checks embedded inside `.nimble` files.
 
 ### 2.2 Concrete Syntax Tree (CST) and Token-Span Architecture
-To guarantee zero collateral damage to manifest files, `dependanim` mandates a **CST / Span-Based Token Rewriter**.
+To guarantee zero collateral damage to manifest files, `renimble` mandates a **CST / Span-Based Token Rewriter**.
 
 ```mermaid
 flowchart TD
@@ -57,7 +57,7 @@ flowchart TD
 ```
 
 ### 2.3 Formal Rewriting Invariants
-Every mutation to a `.nimble` file executed by `dependanim` must strictly uphold the following invariants:
+Every mutation to a `.nimble` file executed by `renimble` must strictly uphold the following invariants:
 
 1. **Invariant I1 (Non-Target Byte Invariance)**:
    For any file $S$ of byte length $N$ mutated to $S'$ by modifying a target package constraint located across byte span $[s_{start}, s_{end})$, all bytes preceding $s_{start}$ and succeeding $s_{end}$ must remain identical:
@@ -115,7 +115,7 @@ The rewriter must handle all canonical `.nimble` dependency declarations:
 ## 3. Nimble SAT / Constraint Graph Resolution Semantics & Transitive Lockfile Consistency
 
 ### 3.1 Constraint Algebra and Operator Semantics
-`dependanim` models version constraints over standard SemVer tuples:
+`renimble` models version constraints over standard SemVer tuples:
 $$V = (major, minor, patch, prerelease, build)$$
 
 | Operator | Syntax Example | Meaning | Formal Semantics |
@@ -140,7 +140,7 @@ Dependency resolution across a project and its transitive dependencies constitut
 
 ```mermaid
 graph TD
-    Root["Root Application (dependanim)"] -->|requires "A >= 1.0.0"| NodeA["Package A"]
+    Root["Root Application (renimble)"] -->|requires "A >= 1.0.0"| NodeA["Package A"]
     Root -->|requires "B >= 2.0.0"| NodeB["Package B"]
     NodeA -->|requires "C >= 1.5.0 & < 3.0.0"| NodeC["Package C"]
     NodeB -->|requires "C < 2.0.0"| NodeC
@@ -152,14 +152,14 @@ graph TD
 ```
 
 #### Conflict Detection & Unsolvability
-When intersection results in the empty set $\emptyset$ (e.g. $P_a$ requires $P_c \ge 2.0.0$ and $P_b$ requires $P_c < 2.0.0$), `dependanim` must:
+When intersection results in the empty set $\emptyset$ (e.g. $P_a$ requires $P_c \ge 2.0.0$ and $P_b$ requires $P_c < 2.0.0$), `renimble` must:
 1. Halt resolution for the candidate version upgrade.
 2. Generate an explicit diagnostic conflict path trace:
    `UnsatisfiableConstraintError: root -> A (1.2.0) -> C (>= 2.0.0) conflicts with root -> B (2.1.0) -> C (< 2.0.0)`.
 3. Never emit an invalid or broken `.nimble` or `nimble.lock` state.
 
 ### 3.3 Resolution Strategies: MVS vs Greedy Upgrades
-`dependanim` supports two deterministic resolution modes:
+`renimble` supports two deterministic resolution modes:
 1. **Conservative (Default / CI Mode)**:
    - Evaluates only non-breaking updates within the operator's declared constraint range (e.g., matching `~=` or `^=`).
    - Prioritizes the highest compatible patch or minor release that satisfies all transitive constraints.
@@ -190,7 +190,7 @@ Nimble's lockfile schema records the resolved state:
 2. **Invariant L2 (Transitive Closure Completeness)**:
    If package $P$ is locked at version $V$, every direct dependency $D \in \text{deps}(P, V)$ must also exist in `nimble.lock` with a valid, satisfying `version` and `vcsRevision`.
 3. **Invariant L3 (Atomic Manifest-Lock Synchronization)**:
-   Whenever `dependanim` updates a constraint in `.nimble`, the corresponding entry (and any transitively affected sub-dependencies) in `nimble.lock` must be recalculated and written simultaneously. A PR must never contain a modified `.nimble` without the corresponding synchronized `nimble.lock` (or vice-versa when a lockfile is tracked).
+   Whenever `renimble` updates a constraint in `.nimble`, the corresponding entry (and any transitively affected sub-dependencies) in `nimble.lock` must be recalculated and written simultaneously. A PR must never contain a modified `.nimble` without the corresponding synchronized `nimble.lock` (or vice-versa when a lockfile is tracked).
 
 ---
 
@@ -202,7 +202,7 @@ Nimble maintains its global package registry via `packages.json` (canonical sour
 ```mermaid
 sequenceDiagram
     participant Runner as Dependanim Runner
-    participant Cache as Local Registry Cache (~/.cache/dependanim/)
+    participant Cache as Local Registry Cache (~/.cache/renimble/)
     participant RegServer as GitHub Raw (packages.json)
     
     Runner->>Cache: Check cache validity (TTL: 1h)
@@ -223,12 +223,12 @@ sequenceDiagram
 ```
 
 #### Cache Invariants:
-- **Location**: Storage defaults to `$XDG_CACHE_HOME/dependanim/packages.json` (fallback: `~/.cache/dependanim/packages.json` or `.dependanim/cache/packages.json`).
+- **Location**: Storage defaults to `$XDG_CACHE_HOME/renimble/packages.json` (fallback: `~/.cache/renimble/packages.json` or `.renimble/cache/packages.json`).
 - **Atomic Cache Update**: To prevent corrupted reads during concurrent runner executions, writing the cached registry must write to a temporary file (`packages.json.tmp.<pid>`) and atomically rename (`renameFile`) over the target file.
 - **Conditional Fetching**: HTTP requests for `packages.json` must always include `If-None-Match: <etag>` and `If-Modified-Since: <timestamp>` when cached metadata is present.
 
 ### 4.2 Upstream VCS Probing & Rate Limiting Mitigation
-When querying upstream repositories for versions, tags, and commit SHAs, `dependanim` interacts with multiple VCS providers (GitHub, GitLab, Gitea, SourceHut).
+When querying upstream repositories for versions, tags, and commit SHAs, `renimble` interacts with multiple VCS providers (GitHub, GitLab, Gitea, SourceHut).
 
 ```mermaid
 flowchart TD
@@ -260,7 +260,7 @@ $$t_{sleep} = \min\left(t_{max}, \, t_{base} \times 2^{attempt}\right) \times \t
 where $t_{base} = 1.0\text{s}$, $t_{max} = 30.0\text{s}$, and maximum retry attempts $N_{max} = 3$.
 
 #### 3. Zero-API Fallback via Git CLI
-If upstream API credentials are unavailable or rate limits are exhausted, `dependanim` must fallback to the transport-level Git protocol:
+If upstream API credentials are unavailable or rate limits are exhausted, `renimble` must fallback to the transport-level Git protocol:
 ```bash
 git ls-remote --tags --heads <repository_url>
 ```
@@ -333,5 +333,5 @@ All implementations following this RFD must pass the following verification test
 
 ## 7. Ratification Sign-off
 
-- **Staff Systems Architect**: `@dependanim-architect` (Kraken-Strand) — *Approved*
+- **Staff Systems Architect**: `@renimble-architect` (Kraken-Strand) — *Approved*
 - **Target Strand**: `strand/task-rfd-architecture`

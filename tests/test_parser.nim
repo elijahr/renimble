@@ -1,5 +1,5 @@
 import std/[unittest, options]
-import ../src/dependanim/[types, declarative_parser]
+import ../src/renimble/[types, declarative_parser]
 
 suite "Nimble Declarative Parser":
   test "Extract package metadata":

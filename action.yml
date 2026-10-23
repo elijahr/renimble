@@ -1,4 +1,4 @@
-name: 'Dependanim: Nim Dependency Updater'
+name: 'Renimble: Nim Dependency Updater'
 description: 'Automated .nimble and nimble.lock dependency updater for Nim projects'
 author: 'Axiomantic'
 branding:
@@ -11,9 +11,9 @@ inputs:
     required: false
     default: ${{ github.token }}
   config-path:
-    description: 'Path to dependanim.yml configuration file'
+    description: 'Path to renimble.yml configuration file'
     required: false
-    default: '.github/dependanim.yml'
+    default: '.github/renimble.yml'
   dry-run:
     description: 'Check for available dependency updates without writing files or opening PRs'
     required: false
@@ -26,10 +26,10 @@ inputs:
 outputs:
   has_updates:
     description: 'Whether dependency updates were found ("true" or "false")'
-    value: ${{ steps.run-dependanim.outputs.has_updates }}
+    value: ${{ steps.run-renimble.outputs.has_updates }}
   updates_count:
     description: 'Total number of dependency updates discovered'
-    value: ${{ steps.run-dependanim.outputs.updates_count }}
+    value: ${{ steps.run-renimble.outputs.updates_count }}
 
 runs:
   using: 'composite'
@@ -39,13 +39,13 @@ runs:
       with:
         nim-version: '2.2.0'
 
-    - name: Build dependanim
+    - name: Build renimble
       shell: bash
       run: |
-        nim c -d:release --opt:speed -o:/tmp/dependanim ${{ github.action_path }}/src/dependanim.nim
+        nim c -d:release --opt:speed -o:/tmp/renimble ${{ github.action_path }}/src/renimble.nim
 
-    - name: Run dependanim
-      id: run-dependanim
+    - name: Run renimble
+      id: run-renimble
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
@@ -57,4 +57,4 @@ runs:
         if [ "${{ inputs.check }}" = "true" ]; then
           FLAGS="$FLAGS --check"
         fi
-        /tmp/dependanim --config:${{ inputs.config-path }} $FLAGS
+        /tmp/renimble --config:${{ inputs.config-path }} $FLAGS

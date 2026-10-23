@@ -1,8 +1,8 @@
 import std/[unittest, tables]
-import ../src/dependanim/[types, config]
+import ../src/renimble/[types, config]
 
-suite "Dependanim Configuration Parser":
-  test "Parse sample dependanim.yml":
+suite "Renimble Configuration Parser":
+  test "Parse sample renimble.yml":
     let yamlContent = """
 version: 1
 updates:

@@ -1,5 +1,5 @@
 import std/[unittest, tables, strutils]
-import ../src/dependanim/[types, lockfile]
+import ../src/renimble/[types, lockfile]
 
 suite "Nimble Lockfile Sync":
   test "Parse and update lockfile":
