@@ -10,7 +10,6 @@ bin           = @["renimble"]
 # Dependencies
 
 requires "nim >= 2.0.0"
-requires "yaml >= 2.1.0"
 
 # Tasks
 
