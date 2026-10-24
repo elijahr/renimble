@@ -1,6 +1,6 @@
 # renimble 👑
 
-[![CI](https://github.com/axiomantic/renimble/actions/workflows/ci.yml/badge.svg)](https://github.com/axiomantic/renimble/actions/workflows/ci.yml)
+[![CI](https://github.com/elijahr/renimble/actions/workflows/ci.yml/badge.svg)](https://github.com/elijahr/renimble/actions/workflows/ci.yml)
 [![Nim](https://img.shields.io/badge/Nim-2.0%2B-FFE953?logo=nim&logoColor=white)](https://nim-lang.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![GitHub Actions Marketplace](https://img.shields.io/badge/Marketplace-Renimble-blue?logo=githubactions&logoColor=white)](https://github.com/marketplace/actions/renimble-nim-dependency-updater)
@@ -49,7 +49,7 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
-      - uses: axiomantic/renimble@v1
+      - uses: elijahr/renimble@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -86,7 +86,7 @@ updates:
 Show the world your Nim dependencies are kept fresh:
 
 ```markdown
-[![Renimble](https://img.shields.io/badge/dependencies-renimble-brightgreen?logo=nim)](https://github.com/axiomantic/renimble)
+[![Renimble](https://img.shields.io/badge/dependencies-renimble-brightgreen?logo=nim)](https://github.com/elijahr/renimble)
 ```
 
 ---

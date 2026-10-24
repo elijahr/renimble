@@ -46,7 +46,7 @@ proc generatePrTitle*(proposals: seq[UpdateProposal], groupName: Option[string] 
     return "chore(deps): bump " & $proposals.len & " dependencies"
 
 proc generatePrBody*(proposals: seq[UpdateProposal]): string =
-  result = "Bumps dependencies using **[renimble](https://github.com/axiomantic/renimble)**.\n\n"
+  result = "Bumps dependencies using **[renimble](https://github.com/elijahr/renimble)**.\n\n"
   result.add("### Updates\n\n")
   result.add("| Package | From | To | Type | Links |\n")
   result.add("|:---|:---|:---|:---|:---|\n")
