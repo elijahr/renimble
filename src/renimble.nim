@@ -42,8 +42,6 @@ proc findNimbleFile(dir: string): Option[string] =
 proc resolveDefaultConfig(): string =
   if fileExists(".github/renimble.yml"):
     return ".github/renimble.yml"
-  if fileExists(".github/dependanim.yml"):
-    return ".github/dependanim.yml"
   return ".github/renimble.yml"
 
 proc main() =

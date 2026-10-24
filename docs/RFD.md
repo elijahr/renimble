@@ -4,7 +4,7 @@
 **Status**: Ratified / Accepted  
 **Created**: 2026-10-21  
 **Target Subsystems**: `rewriter.nim`, `version.nim`, `lockfile.nim`, `registry.nim`, `upstream.nim`, `engine.nim`  
-**Related Specifications**: [SPEC.md](file:///Users/eek/Development/dependanim/docs/SPEC.md)
+**Related Specifications**: [SPEC.md](SPEC.md)
 
 ---
 
@@ -201,7 +201,7 @@ Nimble maintains its global package registry via `packages.json` (canonical sour
 
 ```mermaid
 sequenceDiagram
-    participant Runner as Dependanim Runner
+    participant Runner as Renimble Runner
     participant Cache as Local Registry Cache (~/.cache/renimble/)
     participant RegServer as GitHub Raw (packages.json)
     
@@ -269,7 +269,7 @@ This requires zero API tokens, respects standard git credentials, and directly y
 ### 4.3 Air-Gapped and Offline Execution Mode
 In restricted or air-gapped CI/CD environments where egress traffic is blocked:
 1. **Offline Flag (`--offline`)**:
-   When `--offline` is specified or `DEPENDANIM_OFFLINE=1` is set:
+   When `--offline` is specified or `RENIMBLE_OFFLINE=1` is set:
    - Network requests are strictly bypassed.
    - The engine relies exclusively on locally cached registry definitions and repository git object databases.
 2. **Graceful Skip Protocol**:
@@ -294,7 +294,7 @@ sequenceDiagram
     participant Rewriter as rewriter.nim
     participant Lock as lockfile.nim
 
-    CLI->>Config: parseDependanimConfig()
+    CLI->>Config: parseSimpleYamlConfig()
     CLI->>Parser: parseNimbleManifest(content)
     Parser-->>CLI: NimbleManifest (dependencies, metadata)
     

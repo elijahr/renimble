@@ -12,7 +12,7 @@ All notable changes to this project will be documented in this file.
 - **Adversarial Audit Pillar 2 (HTTP Client Cleanup)**: Ensured `registry.nim:fetchRegistry` closes HTTP connections via `finally: client.close()`.
 - **Adversarial Audit Pillar 3 (Interval Tree `!=` Deconstruction)**: Replaced degenerate empty interval representation of `voNe` with `singleConstraintToIntervals` decomposing `!=` into disjoint intervals `(-inf, target) U (target, +inf)`.
 - **Adversarial Audit Pillar 3 (URL Lockfile Recognition)**: Fixed `lockfile.nim:findDanglingDependencies` to recognize canonical cleaned package names from URL requirements, eliminating false-positive dangling warnings.
-- **Adversarial Audit Pillar 4 (Carcass Purge)**: Purged obsolete `DependanimConfig` legacy alias from `types.nim` and eliminated duplicate `cleanPkgName` and `isRequiresStatement` definitions.
+- **Adversarial Audit Pillar 4 (Carcass Purge)**: Purged obsolete legacy config alias from `types.nim` and eliminated duplicate `cleanPkgName` and `isRequiresStatement` definitions.
 - **Adversarial Audit Pillar 5 (Green Mirage Elimination)**: Replaced loose substring test assertions with exact structural object equality across compiler and workflow updaters, added negative controls for invalid tags, prereleases, and URL requirements.
 
 ### Added

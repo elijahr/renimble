@@ -9,7 +9,6 @@ nimdoc.out/
 *.so
 *.dylib
 /renimble
-/dependanim
 bin/
 tests/test_all
 
@@ -27,7 +26,6 @@ nimbledeps/
 # Garden & Rhizo ephemeral state
 .garden/tmp/
 /tmp/garden-renimble/
-/tmp/garden-dependanim/
 .vine/
 .vine.json
 .envrc

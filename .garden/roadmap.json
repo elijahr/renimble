@@ -1,5 +1,5 @@
 {
-  "project": "dependanim",
+  "project": "renimble",
   "generated_at": "2026-10-21T12:21:11Z",
   "seasons": [
     {
@@ -11,8 +11,8 @@
       "percent_complete": 0,
       "items": [
         {
-          "id": "build-dependanim-automated-nim-nimble-dependency-updater-with-version-resolution-in-place-ast-preservation-lockfile-sync-and-github-action-integration",
-          "title": "Build dependanim: Automated Nim & Nimble dependency updater with version resolution, in-place AST preservation, lockfile sync, and GitHub Action integration",
+          "id": "build-renimble-automated-nim-nimble-dependency-updater-with-version-resolution-in-place-ast-preservation-lockfile-sync-and-github-action-integration",
+          "title": "Build renimble: Automated Nim & Nimble dependency updater with version resolution, in-place AST preservation, lockfile sync, and GitHub Action integration",
           "season": "v0.1.0",
           "sunlight": "blazing",
           "status": "SOWN",
