@@ -1,5 +1,5 @@
-import std/[unittest, tables, strutils]
-import ../src/renimble/[types, version, declarative_parser, rewriter, lockfile]
+import std/[unittest, tables, strutils, options]
+import ../src/renimble/[types, version, declarative_parser, rewriter, lockfile, upstream]
 
 suite "Adversarial Testing Suite & Negative Controls":
 
@@ -449,3 +449,69 @@ suite "Adversarial Testing Suite & Negative Controls":
     check issues[3] == "Malformed lockfile entry: package 'badPkg' has empty url"
     check issues[4] == "Dangling transitive dependency: package 'transPkg' requires 'missingTransDep', but it is missing from lockfile"
     check issues[5] == "Circular dependency detected: cycleA -> cycleB -> cycleA"
+
+  # ---------------------------------------------------------------------------
+  # Upstream Tag Parsing & Release Selection Adversarial Controls
+  # ---------------------------------------------------------------------------
+  test "Negative Control: parseGitLsRemoteTags immune to non-SemVer and malformed tags":
+    let rawLsRemote = [
+      "a1b2c3d4e5f67890123456789012345678901234\trefs/tags/v1.0.0",
+      "1111111111111111111111111111111111111111\trefs/tags/v1.0.0^{}",
+      "2222222222222222222222222222222222222222\trefs/tags/nightly",
+      "3333333333333333333333333333333333333333\trefs/tags/devel",
+      "4444444444444444444444444444444444444444\trefs/tags/release_candidate_1",
+      "5555555555555555555555555555555555555555\trefs/tags/2.1.0"
+    ].join("\n")
+
+    # Must NOT raise ValueError on 'nightly' or 'devel'
+    let tags = parseGitLsRemoteTags(rawLsRemote)
+    check tags.len == 2
+    check tags[0].name == "v1.0.0"
+    check tags[0].semver == parseSemVersion("1.0.0")
+    check tags[1].name == "2.1.0"
+    check tags[1].semver == parseSemVersion("2.1.0")
+
+  test "Negative Control: getLatestRelease prefers stable over prerelease by default":
+    let tags = @[
+      UpstreamTag(name: "v3.0.0-alpha.1", semver: parseSemVersion("3.0.0-alpha.1"), commitSha: "3333"),
+      UpstreamTag(name: "v2.5.0", semver: parseSemVersion("2.5.0"), commitSha: "2222"),
+      UpstreamTag(name: "v2.4.0", semver: parseSemVersion("2.4.0"), commitSha: "1111")
+    ]
+    let stableConstraint = parseVersionConstraint(">= 2.0.0")
+    let latestStable = getLatestRelease(tags, stableConstraint)
+    check latestStable.isSome
+    check latestStable.get.semver == parseSemVersion("2.5.0")
+
+    # If user explicitly tracks prerelease, allow prerelease
+    let prereleaseConstraint = parseVersionConstraint(">= 3.0.0-alpha.0")
+    let latestPrerelease = getLatestRelease(tags, prereleaseConstraint)
+    check latestPrerelease.isSome
+    check latestPrerelease.get.semver == parseSemVersion("3.0.0-alpha.1")
+
+  test "Negative Control: findDanglingDependencies recognizes direct URL packages":
+    let manifestText = """
+requires "https://github.com/nim-lang/zip.git >= 0.3.0"
+requires "yaml >= 1.0.0"
+"""
+    let manifest = parseNimbleManifest(manifestText)
+    let lockJson = """{
+  "version": 1,
+  "packages": {
+    "zip": {
+      "version": "0.3.1",
+      "vcsRevision": "abcdef1234567890abcdef1234567890abcdef12",
+      "url": "https://github.com/nim-lang/zip.git",
+      "downloadMethod": "git"
+    },
+    "yaml": {
+      "version": "1.0.0",
+      "vcsRevision": "1234567890abcdef1234567890abcdef12345678",
+      "url": "https://github.com/flyx/nim-yaml",
+      "downloadMethod": "git"
+    }
+  }
+}"""
+    let lock = parseLockFile(lockJson)
+    let dangling = findDanglingDependencies(manifest, lock)
+    # The URL package 'zip' must NOT be flagged as dangling!
+    check dangling.len == 0

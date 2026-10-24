@@ -118,7 +118,8 @@ proc singleConstraintToInterval*(c: SingleConstraint): VersionInterval =
   of voNone, voEq:
     result = newInterval(bound(target, true), bound(target, true))
   of voNe:
-    result = newInterval(bound(target, false), bound(target, false))
+    # Single interval approximation: lower disconnected segment; use singleConstraintToIntervals for full disjoint set
+    result = newInterval(negInf(), bound(target, false))
   of voGt:
     result = newInterval(bound(target, false), posInf())
   of voGe:
@@ -148,6 +149,21 @@ proc singleConstraintToInterval*(c: SingleConstraint): VersionInterval =
     highVer.minor += 1
     highVer.patch = 0
     result = newInterval(low, bound(highVer, false))
+
+proc singleConstraintToIntervals*(c: SingleConstraint): seq[VersionInterval] =
+  ## Maps a constraint to its exact interval representation. For `!=` (voNe),
+  ## returns two disconnected disjoint intervals: (-inf, target) U (target, +inf).
+  if c.spec.kind != vkSemVer:
+    return @[newInterval(negInf(), posInf())]
+
+  if c.op == voNe:
+    let target = c.spec.semver
+    return @[
+      newInterval(negInf(), bound(target, false)),
+      newInterval(bound(target, false), posInf())
+    ]
+  else:
+    return @[singleConstraintToInterval(c)]
 
 proc updateMaxHigh[T](node: IntervalNode[T]) =
   if node == nil: return

@@ -1,5 +1,5 @@
 import std/[json, tables, strutils, sets, algorithm]
-import types
+import types, declarative_parser
 
 proc parseLockFile*(content: string, filePath: string = ""): LockFile =
   result.filePath = filePath
@@ -72,7 +72,8 @@ proc findDanglingDependencies*(manifest: NimbleManifest, lock: LockFile): seq[st
   for dep in manifest.dependencies:
     if dep.name.toLowerAscii() == "nim":
       continue
-    if not lock.packages.hasKey(dep.name):
+    let clean = cleanPackageName(dep.name)
+    if not lock.packages.hasKey(dep.name) and not lock.packages.hasKey(clean):
       result.add(dep.name)
 
 proc detectCircularDependencies*(depGraph: Table[string, seq[string]]): seq[seq[string]] =

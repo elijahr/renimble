@@ -1,5 +1,5 @@
 import std/[strutils, options, osproc, streams, json]
-import types
+import types, declarative_parser
 
 type
   GitCommandResult* = object
@@ -17,23 +17,12 @@ type
     success*: bool
     error*: string
 
-proc cleanPkgName(name: string): string =
-  if name.startsWith("http://") or name.startsWith("https://") or name.startsWith("git://") or name.startsWith("git@"):
-    var clean = name
-    if clean.endsWith(".git"):
-      clean = clean[0..^5]
-    let lastSlash = clean.rfind('/')
-    if lastSlash != -1:
-      return clean[(lastSlash + 1)..^1]
-    return clean
-  return name
-
 proc generateBranchName*(proposals: seq[UpdateProposal], groupName: Option[string] = none(string)): string =
   if groupName.isSome:
     return "renimble/group-" & groupName.get
   elif proposals.len == 1:
     let p = proposals[0]
-    return "renimble/" & cleanPkgName(p.dependency.name) & "-" & p.targetVersion
+    return "renimble/" & cleanPackageName(p.dependency.name) & "-" & p.targetVersion
   else:
     return "renimble/updates"
 
@@ -87,7 +76,7 @@ proc generatePrBody*(proposals: seq[UpdateProposal]): string =
   var jProposals = newJArray()
   for p in proposals:
     var jP = newJObject()
-    jP["package"] = %cleanPkgName(p.dependency.name)
+    jP["package"] = %cleanPackageName(p.dependency.name)
     jP["currentVersion"] = %p.currentVersion
     jP["targetVersion"] = %p.targetVersion
     jP["targetVcsRevision"] = %p.targetVcsRevision
@@ -234,3 +223,53 @@ proc executeGitOps*(
     return result
 
   result.success = true
+
+proc createPullRequest*(
+  report: GitOpsReport,
+  baseBranch: string = "main",
+  labels: seq[string] = @[],
+  reviewers: seq[string] = @[],
+  assignees: seq[string] = @[],
+  workingDir: string = ""
+): GitCommandResult =
+  ## Creates a GitHub pull request for the committed branch using gh CLI.
+  var args: seq[string] = @[
+    "pr", "create",
+    "--base", baseBranch,
+    "--head", report.branchName,
+    "--title", report.prTitle,
+    "--body", report.prBody
+  ]
+  for lbl in labels:
+    args.add("--label")
+    args.add(lbl)
+  for rev in reviewers:
+    args.add("--reviewer")
+    args.add(rev)
+  for asn in assignees:
+    args.add("--assignee")
+    args.add(asn)
+
+  try:
+    let p = startProcess(
+      command = "gh",
+      workingDir = workingDir,
+      args = args,
+      options = {poUsePath, poStdErrToStdOut}
+    )
+    let output = p.outputStream.readAll()
+    let exitCode = p.waitForExit()
+    p.close()
+    return GitCommandResult(
+      success: exitCode == 0,
+      exitCode: exitCode,
+      output: output.strip(),
+      command: "gh " & args.join(" ")
+    )
+  except CatchableError as e:
+    return GitCommandResult(
+      success: false,
+      exitCode: -1,
+      output: e.msg,
+      command: "gh " & args.join(" ")
+    )

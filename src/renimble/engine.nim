@@ -1,16 +1,5 @@
 import std/[options, tables, strutils]
-import types, version, registry, upstream, interval_tree, dismissal, atlas
-
-proc cleanPackageName*(name: string): string =
-  if name.startsWith("http://") or name.startsWith("https://") or name.startsWith("git://") or name.startsWith("git@"):
-    var clean = name
-    if clean.endsWith(".git"):
-      clean = clean[0..^5]
-    let lastSlash = clean.rfind('/')
-    if lastSlash != -1:
-      return clean[(lastSlash + 1)..^1]
-    return clean
-  return name
+import types, version, declarative_parser, registry, upstream, interval_tree, dismissal, atlas
 
 proc isPackageIgnored*(pkgName: string, ignoreRules: seq[IgnoreRule]): bool =
   let clean = cleanPackageName(pkgName).toLowerAscii()
@@ -29,7 +18,8 @@ proc isVersionIgnored*(pkgName: string, ver: SemVersion, ignoreRules: seq[Ignore
       for vRule in rule.versions:
         let parsed = parseVersionConstraint(vRule)
         for sc in parsed.constraints:
-          tree.insert(singleConstraintToInterval(sc), vRule)
+          for iv in singleConstraintToIntervals(sc):
+            tree.insert(iv, vRule)
       if tree.queryPoint(ver).len > 0:
         return true
   return false

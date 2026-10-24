@@ -1,12 +1,5 @@
 import std/strutils
-
-proc isRequiresStatement*(s: string): bool =
-  let st = s.strip()
-  if not st.startsWith("requires"):
-    return false
-  if st.len == 8:
-    return true
-  return st[8] in {' ', '\t', '(', '"', '\''}
+import declarative_parser
 
 proc rewriteRequiresLine*(line: string, targetPkg: string, newConstraint: string): string =
   ## Replaces the constraint for targetPkg on a requires line while preserving

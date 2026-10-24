@@ -1,6 +1,18 @@
 import std/[strutils, options]
 import types, version
 
+proc cleanPackageName*(name: string): string =
+  ## Strips URL schemes, forge prefixes, and trailing .git extensions to produce a canonical package name.
+  if name.startsWith("http://") or name.startsWith("https://") or name.startsWith("git://") or name.startsWith("git@"):
+    var clean = name
+    if clean.endsWith(".git"):
+      clean = clean[0..^5]
+    let lastSlash = clean.rfind('/')
+    if lastSlash != -1:
+      return clean[(lastSlash + 1)..^1]
+    return clean
+  return name
+
 proc parseRequiresArg(rawArg: string, lineIndex: int, rawLine: string): Option[Dependency] =
   var clean = rawArg.strip()
   if clean.startsWith("\"") and clean.endsWith("\"") and clean.len >= 2:

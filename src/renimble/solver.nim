@@ -1,4 +1,4 @@
-import std/[os, osproc, strutils]
+import std/[os, osproc]
 
 type
   SolverResult* = object

@@ -1,5 +1,5 @@
 import std/[os, parseopt, strutils, options, tables]
-import renimble/[types, version, declarative_parser, rewriter, lockfile, config, registry, engine, pr, github_actions, atlas, dismissal, solver]
+import renimble/[types, version, declarative_parser, rewriter, lockfile, config, registry, engine, pr, github_actions, atlas, dismissal, solver, compiler]
 
 const RenimbleVersion = "0.1.0"
 
@@ -193,6 +193,39 @@ proc main() =
       echo "==> Updated " & nimblePath & " in-place."
       modifiedFiles.add(nimblePath)
 
+    # Check if compiler version was updated and synchronize workflow / env files
+    for u in updates:
+      if u.dependency.name.toLowerAscii() == "nim":
+        let targetNimVer = u.targetVersion
+        # 1. Update .github/workflows/*.yml
+        let wfDir = searchDir / ".github" / "workflows"
+        if dirExists(wfDir):
+          for kind, path in walkDir(wfDir):
+            if kind == pcFile and (path.endsWith(".yml") or path.endsWith(".yaml")):
+              let (newContent, modded) = updateWorkflowNimVersion(readFile(path), targetNimVer)
+              if modded:
+                writeFile(path, newContent)
+                echo "==> Updated compiler version in workflow: " & path
+                if path notin modifiedFiles: modifiedFiles.add(path)
+
+        # 2. Update .tool-versions
+        let tvPath = searchDir / ".tool-versions"
+        if fileExists(tvPath):
+          let (newTv, modded) = updateToolVersionsNim(readFile(tvPath), targetNimVer)
+          if modded:
+            writeFile(tvPath, newTv)
+            echo "==> Updated compiler version in: " & tvPath
+            if tvPath notin modifiedFiles: modifiedFiles.add(tvPath)
+
+        # 3. Update .mise.toml
+        let misePath = searchDir / ".mise.toml"
+        if fileExists(misePath):
+          let (newMise, modded) = updateMiseTomlNim(readFile(misePath), targetNimVer)
+          if modded:
+            writeFile(misePath, newMise)
+            echo "==> Updated compiler version in: " & misePath
+            if misePath notin modifiedFiles: modifiedFiles.add(misePath)
+
     # Re-resolve lockfiles via delegated native solver to avoid transitive graph corruption
     let isAtlas = atlasConfigOpt.isSome or atlasLockOpt.isSome
     let solverRes = runNativeLockfileSync(searchDir, updatedPkgNames, isAtlas)
@@ -245,6 +278,27 @@ proc main() =
       )
       if report.success:
         echo "==> [GitOps] Successfully created branch '" & report.branchName & "' and committed changes."
+        if isGitHubActions() and getEnv("RENIMBLE_NO_PUSH", "0") != "1":
+          echo "==> [GitOps] Pushing branch to remote origin..."
+          let pushRes = gitPush(report.branchName, "origin", workingDir = searchDir)
+          if pushRes.success:
+            echo "==> [GitOps] Branch pushed. Opening pull request..."
+            let prRes = createPullRequest(
+              report,
+              baseBranch = target.targetBranch,
+              labels = target.labels,
+              reviewers = target.reviewers,
+              assignees = target.assignees,
+              workingDir = searchDir
+            )
+            if prRes.success:
+              echo "==> [GitOps] Successfully opened PR: " & prRes.output
+            else:
+              echo "==> [WARN] Could not create PR: " & prRes.output
+          else:
+            echo "==> [WARN] Push failed: " & pushRes.output
+        else:
+          echo "==> [GitOps] Local execution or RENIMBLE_NO_PUSH active: branch created locally without pushing to remote."
       else:
         echo "==> [WARN] GitOps error: " & report.error
 

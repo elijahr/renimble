@@ -19,6 +19,35 @@ suite "SemVer Interval Tree & Range Algebra":
     check ge.low.inclusive == true
     check ge.high.kind == bkPositiveInfinity
 
+  test "Decompose != operator into disjoint intervals":
+    let neIntervals = singleConstraintToIntervals(parseSingleConstraint("!= 1.5.0"))
+    check neIntervals.len == 2
+    # First interval: (-inf, 1.5.0)
+    check neIntervals[0].low.kind == bkNegativeInfinity
+    check neIntervals[0].high.kind == bkValue
+    check neIntervals[0].high.ver == parseSemVersion("1.5.0")
+    check neIntervals[0].high.inclusive == false
+    # Second interval: (1.5.0, +inf)
+    check neIntervals[1].low.kind == bkValue
+    check neIntervals[1].low.ver == parseSemVersion("1.5.0")
+    check neIntervals[1].low.inclusive == false
+    check neIntervals[1].high.kind == bkPositiveInfinity
+
+    # Point containment in disjoint intervals
+    check contains(neIntervals[0], parseSemVersion("1.4.9"))
+    check not contains(neIntervals[0], parseSemVersion("1.5.0"))
+    check not contains(neIntervals[1], parseSemVersion("1.5.0"))
+    check contains(neIntervals[1], parseSemVersion("1.5.1"))
+
+    # Test in tree query
+    var neTree = newVersionIntervalTree[string]()
+    for iv in neIntervals:
+      neTree.insert(iv, "exclude-1.5.0")
+
+    check neTree.queryPoint(parseSemVersion("1.4.0")) == @["exclude-1.5.0"]
+    check neTree.queryPoint(parseSemVersion("1.6.0")) == @["exclude-1.5.0"]
+    check neTree.queryPoint(parseSemVersion("1.5.0")).len == 0 # Negative control!
+
   test "Interval point containment":
     let iv = newInterval(bound(parseSemVersion("1.0.0"), true), bound(parseSemVersion("2.0.0"), false))
     check contains(iv, parseSemVersion("1.0.0"))

@@ -48,10 +48,13 @@ proc fetchRegistry*(reg: var PackageRegistry, forceRefresh: bool = false, url: s
 
   try:
     var client = newHttpClient(timeout = 10000)
-    let body = client.getContent(url)
-    writeFile(reg.cachePath, body)
-    reg.loadFromContent(body)
-    return true
+    try:
+      let body = client.getContent(url)
+      writeFile(reg.cachePath, body)
+      reg.loadFromContent(body)
+      return true
+    finally:
+      client.close()
   except CatchableError:
     if fileExists(reg.cachePath):
       try:

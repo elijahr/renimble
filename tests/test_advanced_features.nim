@@ -1,5 +1,5 @@
 import std/[unittest, tables, os, strutils, json]
-import ../src/renimble/[types, version, engine, dismissal, atlas, declarative_parser, rewriter, compiler, pr, solver]
+import ../src/renimble/[types, version, dismissal, atlas, declarative_parser, rewriter, compiler, pr, solver]
 
 suite "Advanced Dependency Engine Features":
 
@@ -172,26 +172,52 @@ requires "https://github.com/nim-lang/zip >= 0.3.1"
   # 7. Nim Compiler Version Updaters (Workflows, asdf, mise)
   # ---------------------------------------------------------------------------
   test "Update workflow nim-version step":
-    let wf = """
-    steps:
+    let wf = """    steps:
       - uses: jiro4989/setup-nim-action@v2
         with:
-          nim-version: '2.0.8'
-"""
+          nim-version: '2.0.8'"""
+    let expectedWf = """    steps:
+      - uses: jiro4989/setup-nim-action@v2
+        with:
+          nim-version: '2.2.0'"""
     let (updatedWf, mod1) = updateWorkflowNimVersion(wf, "2.2.0")
     check mod1
-    check "nim-version: '2.2.0'" in updatedWf
+    check updatedWf == expectedWf
+
+    # Negative control: Already at target version
+    let (sameWf, modSame) = updateWorkflowNimVersion(expectedWf, "2.2.0")
+    check not modSame
+    check sameWf == expectedWf
+
+    # Negative control: Workflow without nim-version
+    let nonNimWf = """    steps:
+      - uses: actions/checkout@v4"""
+    let (unmodWf, modNon) = updateWorkflowNimVersion(nonNimWf, "2.2.0")
+    check not modNon
+    check unmodWf == nonNimWf
 
   test "Update .tool-versions and .mise.toml":
     let tv = "nim 2.0.8\nnodejs 20.0.0\n"
     let (updatedTv, mod2) = updateToolVersionsNim(tv, "2.2.0")
     check mod2
-    check "nim 2.2.0" in updatedTv
+    check updatedTv == "nim 2.2.0\nnodejs 20.0.0\n"
+
+    # Negative control: tool-versions without nim
+    let tvOther = "ruby 3.2.0\nnodejs 20.0.0\n"
+    let (unmodTv, modTvOther) = updateToolVersionsNim(tvOther, "2.2.0")
+    check not modTvOther
+    check unmodTv == tvOther
 
     let mise = "[tools]\nnim = \"2.0.8\"\n"
     let (updatedMise, mod3) = updateMiseTomlNim(mise, "2.2.0")
     check mod3
-    check "nim = \"2.2.0\"" in updatedMise
+    check updatedMise == "[tools]\nnim = \"2.2.0\"\n"
+
+    # Negative control: mise.toml without nim
+    let miseOther = "[tools]\npython = \"3.11\"\n"
+    let (unmodMise, modMiseOther) = updateMiseTomlNim(miseOther, "2.2.0")
+    check not modMiseOther
+    check unmodMise == miseOther
 
   # ---------------------------------------------------------------------------
   # 8. Delegated Native Solver for Transitive Graph Verification
@@ -208,3 +234,29 @@ requires "https://github.com/nim-lang/zip >= 0.3.1"
     )
     # The call must return a structured result without throwing an unhandled exception
     check res.commandRan.len > 0
+
+  # ---------------------------------------------------------------------------
+  # 9. Pull Request Creation Engine & Dry-Run Command Generation
+  # ---------------------------------------------------------------------------
+  test "createPullRequest constructs proper command invocation":
+    let r = GitOpsReport(
+      branchName: "renimble/zippy-0.11.0",
+      prTitle: "chore(deps): bump zippy from 0.10.4 to 0.11.0",
+      prBody: "Automated bump body"
+    )
+    # Testing invocation in non-gh temp directory returns structured failure without crashing
+    let prRes = createPullRequest(
+      r,
+      baseBranch = "main",
+      labels = @["dependencies", "nim"],
+      reviewers = @["alice"],
+      assignees = @["bob"],
+      workingDir = getTempDir()
+    )
+    check prRes.command.contains("pr create")
+    check prRes.command.contains("--base main")
+    check prRes.command.contains("--head renimble/zippy-0.11.0")
+    check prRes.command.contains("--label dependencies")
+    check prRes.command.contains("--label nim")
+    check prRes.command.contains("--reviewer alice")
+    check prRes.command.contains("--assignee bob")

@@ -18,8 +18,12 @@ proc parseGitLsRemoteTags*(output: string): seq[UpstreamTag] =
         # Ignore dereferenced tag pointers ^{} for now or map to same tag
         if tagName.endsWith("^{}"):
           continue
-        let sem = parseSemVersion(tagName)
-        result.add(UpstreamTag(name: tagName, semver: sem, commitSha: sha))
+        try:
+          let sem = parseSemVersion(tagName)
+          result.add(UpstreamTag(name: tagName, semver: sem, commitSha: sha))
+        except ValueError:
+          # Safely ignore non-SemVer tags like 'nightly', 'devel', 'v_old'
+          discard
 
 proc fetchUpstreamTags*(repoUrl: string): seq[UpstreamTag] =
   ## Uses git ls-remote to query available tags and their SHAs without cloning
@@ -35,7 +39,27 @@ proc getLatestRelease*(tags: seq[UpstreamTag], currentConstraint: VersionConstra
   if tags.len == 0:
     return none(UpstreamTag)
 
-  # Return the highest valid SemVer tag
+  # Check if current constraint allows or specifies a prerelease
+  var allowPrerelease = false
+  for c in currentConstraint.constraints:
+    if c.spec.kind == vkSemVer and c.spec.semver.prerelease.len > 0:
+      allowPrerelease = true
+      break
+
+  # 1. If tracking prereleases, return the absolute highest tag
+  if allowPrerelease:
+    for tag in tags:
+      if tag.semver.major > 0 or tag.semver.minor > 0 or tag.semver.patch > 0:
+        return some(tag)
+    return some(tags[0])
+
+  # 2. For stable tracking, prefer highest stable release (no prerelease identifier)
+  for tag in tags:
+    if tag.semver.prerelease.len == 0:
+      if tag.semver.major > 0 or tag.semver.minor > 0 or tag.semver.patch > 0:
+        return some(tag)
+
+  # 3. Fallback to highest tag if no stable releases exist
   for tag in tags:
     if tag.semver.major > 0 or tag.semver.minor > 0 or tag.semver.patch > 0:
       return some(tag)

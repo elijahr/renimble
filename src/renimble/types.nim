@@ -108,8 +108,6 @@ type
     version*: int
     updates*: seq[UpdateTargetConfig]
 
-  DependanimConfig* = RenimbleConfig
-
   BumpType* = enum
     btNone,
     btPatch,
