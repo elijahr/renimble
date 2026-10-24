@@ -4,34 +4,40 @@
 
 | Field | Value |
 | :--- | :--- |
-| **Ecosystem Name** | `nimble` |
-| **Package Manager(s)** | [Nimble](https://github.com/nim-lang/nimble) / [Atlas](https://github.com/nim-lang/atlas) |
-| **Primary Registry** | [Nim Package Directory (`packages.json`)](https://raw.githubusercontent.com/nim-lang/packages/master/packages.json) / [nimble.directory](https://nimble.directory) |
-| **Manifest Files** | `*.nimble`, `atlas.config` |
-| **Lockfiles** | `nimble.lock` (JSON format), `atlas.lock` (JSON format) |
+| **Ecosystem name** | `nimble` |
+| **Package manager(s)** | [Nimble](https://github.com/nim-lang/nimble) / [Atlas](https://github.com/nim-lang/atlas) |
+| **Primary registry** | [Nim Package Directory (`packages.json`)](https://raw.githubusercontent.com/nim-lang/packages/master/packages.json) / [nimble.directory](https://nimble.directory) |
+| **Manifest files** | `*.nimble`, `atlas.config` |
+| **Lockfiles** | `nimble.lock` (JSON format v1), `atlas.lock` (JSON format) |
 
 ---
 
-## 1. Background & Motivation
+## Background
 
-[Nim](https://nim-lang.org/) is a statically typed, compiled systems programming language that compiles to C, C++, and JavaScript. It combines the expressive syntax of Python with the raw execution speed and memory efficiency of C.
+[Nim](https://nim-lang.org/) is a statically typed, compiled systems programming language with clean syntax, expressive metaprogramming, and zero-overhead C/C++/JavaScript compilation targets.
 
-Nimble is the official, ubiquitous package manager for Nim, bundled with the Nim compiler distribution since Nim 0.15 (2016). Over 2,500 active packages are registered in the central Nimble package directory, spanning web frameworks, cryptographic libraries, machine learning runtimes, and embedded firmware. In addition, [Atlas](https://github.com/nim-lang/atlas) is Nim's modern alternative workspace manager designed by the Nim core team for reproducible, monorepo, and lockfile-first environments.
+Nimble has served as the official, standard package manager for Nim since 2014, bundled directly in every official compiler release. In addition, [Atlas](https://github.com/nim-lang/atlas) is Nim's modern alternative workspace manager designed by the Nim core team for reproducible, monorepo, and lockfile-first environments.
 
-Currently, **zero native support exists in Dependabot** (or Renovate) for Nim projects. Nim open-source maintainers and enterprise users must either manually track upstream releases, run ad-hoc scripts, or build bespoke CI pipelines to detect and bump dependency versions. Adding `nimble` to `dependabot-core` brings automated vulnerability remediation and routine dependency updates to the growing Nim community on GitHub.
+### Empirical Ecosystem Metrics (Live GitHub API)
+- **Active Repositories**: **14,090+ public Nim repositories** on GitHub (`language:nim`).
+- **Central Package Registry**: **2,978 packages** indexed in [`nim-lang/packages`](https://github.com/nim-lang/packages).
+- **Core Community**: `nim-lang/Nim` (**18,280+ stars**, 1,560+ forks) and `nim-lang/nimble` (**1,400+ stars**, 218 forks).
+- **Enterprise & Production Proof**: Major production deployments including Ethereum consensus client ([Nimbus](https://github.com/status-im/nimbus-eth2) securing billions in proof-of-stake value), high-frequency financial trading, and embedded IoT firmware.
+
+Currently, **zero native support exists in Dependabot** for Nim projects. Nim maintainers are forced to manually track upstream releases, run ad-hoc scripts, or build bespoke CI pipelines. Adding `nimble` brings automated security updates and routine version bumping to over 14,000 repositories on GitHub.
 
 ---
 
-## 2. Manifest & Lockfile Specifications
+## Manifest & Lockfile Format
 
-### A. Manifest Format (`*.nimble`)
-Nimble manifest files (`<package_name>.nimble`) use Nim's declarative DSL syntax. Package metadata and dependencies are declared via top-level statements:
+### 1. Nimble Manifest (`*.nimble`)
+Nimble manifest files (`<package_name>.nimble`) declare package metadata and dependencies using top-level declarative statements:
 
 ```nim
 # Package metadata
 version       = "1.2.0"
 author        = "Jane Doe"
-description   = "High-performance cryptographic hashing library"
+description   = "High-performance cryptographic library"
 license       = "MIT"
 srcDir        = "src"
 
@@ -40,16 +46,18 @@ requires "nim >= 2.0.0"
 requires "checksums >= 0.1.0", "zippy >= 0.10.4"
 requires "ws#head"
 requires "react [gui] >= 1.0.0"
+
+task test, "Run the test suite":
+  exec "nim c -r tests/test_all.nim"
 ```
 
-#### Key Characteristics:
-1. **Dependency Syntax**: Declared using `requires "<package> <constraint>"`. Multiple comma-separated requirements can be combined on a single line or spanned across lines.
-2. **Constraint Operators**: Supports standard comparison operators (`>=`, `<=`, `>`, `<`, `==`, `!=`), SemVer caret (`^=`), tilde (`~=`), and intersected ranges joined by `&` (e.g. `requires "pkg >= 1.0.0 & <= 1.5.0"`).
-3. **VCS Pins**: Dependencies can be pinned to Git branches (`#head`, `#devel`) or commit SHAs (`#a1b2c3d`).
-4. **Feature Flags**: Optional feature flags may be bracketed after the package name (e.g. `"pkg [gui] >= 1.0.0"`).
+- **Dependency Declarations**: Multiple comma-separated requirements can be combined on a single line or spanned across lines.
+- **Constraint Operators**: Standard comparisons (`>=`, `<=`, `>`, `<`, `==`, `!=`), SemVer caret (`^=`), tilde (`~=`), and intersected bounds joined by `&` (e.g. `requires "pkg >= 1.0.0 & <= 1.5.0"`).
+- **VCS Pins**: Dependencies can pin to Git branches (`#head`, `#devel`) or commit SHAs (`#a1b2c3d`).
+- **Feature Flags**: Optional bracketed flags (e.g. `"pkg [gui] >= 1.0.0"`).
 
-### B. Lockfile Format (`nimble.lock`)
-Introduced in Nimble 0.14, `nimble.lock` is a deterministic, machine-readable JSON file specifying resolved dependency versions and commit revisions:
+### 2. Lockfile Format (`nimble.lock`)
+Standard JSON lockfile format introduced in Nimble 0.14:
 
 ```json
 {
@@ -71,8 +79,8 @@ Introduced in Nimble 0.14, `nimble.lock` is a deterministic, machine-readable JS
 }
 ```
 
-### C. Atlas Manifest & Lockfile (`atlas.config` / `atlas.lock`)
-Atlas projects specify dependency targets in `atlas.config` and record exact resolved commit SHAs in `atlas.lock`:
+### 3. Atlas Lockfile (`atlas.lock`)
+Atlas projects specify dependencies in `atlas.config` and lock exact SHAs in `atlas.lock`:
 
 ```json
 {
@@ -88,140 +96,94 @@ Atlas projects specify dependency targets in `atlas.config` and record exact res
 
 ---
 
-## 3. Architecture & Dependabot Integration
+## Implementation Plan
 
-Following the Dependabot Core architecture (`dependabot-core/NEW_ECOSYSTEMS.md`), the implementation will reside in `dependabot/nimble`:
-
-```
-dependabot-core/
-└── nimble/
-    ├── lib/
-    │   └── dependabot/
-    │       └── nimble/
-    │           ├── file_fetcher.rb
-    │           ├── file_parser.rb
-    │           ├── update_checker.rb
-    │           ├── file_updater.rb
-    │           ├── metadata_finder.rb
-    │           ├── package.rb
-    │           └── version.rb
-    └── spec/
-        ├── fixtures/
-        └── dependabot/nimble/
-```
-
-### Class Responsibilities:
-
-### 1. `Dependabot::Nimble::FileFetcher`
-- Discovers `*.nimble` manifests and companion lockfiles (`nimble.lock`, `atlas.lock`).
-- Supports subdirectories and nested monorepo packages.
-- Fetches `.tool-versions` or `.github/workflows/*.yml` if compiler synchronization is enabled.
-
-### 2. `Dependabot::Nimble::FileParser`
-- **Declarative AST Extraction**: Parses `requires` statements using a declarative lexer/parser without executing the `.nimble` file through a shell or compiler. This eliminates arbitrary code execution risks.
-- Extracts package name, constraint string, constraint operator, VCS ref, and associated locked version.
-- Associates lockfile entries from `nimble.lock` or `atlas.lock`.
-
-### 3. `Dependabot::Nimble::UpdateChecker`
-- Resolves the latest available releases:
-  - **Registry Lookup**: Queries Nimble's official package directory (`packages.json`) to resolve package names to their canonical Git repository URLs.
-  - **Git Tag Discovery**: Runs `git ls-remote --tags <url>` against the upstream repository to find SemVer release tags.
-  - **Prerelease Filtering**: By default, stable tracks ignore prereleases (`alpha`, `beta`, `rc`, `devel`) unless the current version is already on a prerelease track.
-- Evaluates SemVer version compatibility and determines whether an update satisfies existing bounds or requires a manifest constraint bump.
-- Implements `requirements_to_unlock` (lockfile-only vs manifest+lockfile).
-
-### 4. `Dependabot::Nimble::FileUpdater`
-- **In-Place Formatting Preservation**: Modifies `*.nimble` files in-place while strictly preserving original indentation (2-space, 4-space, tabs), quotation marks (single vs double), comments, and multi-line formatting.
-- **Transitive Lockfile Synchronization**:
-  - For `nimble.lock`: Updates the target package version and commit SHA, and optionally delegates to `nimble lock <pkg>` to regenerate transitive dependency trees.
-  - For `atlas.lock`: Updates pinned commit SHAs and version metadata.
-
-### 5. `Dependabot::Nimble::MetadataFinder`
-- Extracts repository URLs, release notes, and changelogs from upstream GitHub/GitLab releases or repository `CHANGELOG.md` files for display in Dependabot PR descriptions.
-
----
-
-## 4. Cooldown Support
-
-Dependabot's release cooldown mechanism prevents immediately updating to newly published releases to mitigate zero-day supply chain attacks.
-
-- **Timestamp Source**: Upstream Git release tags contain commit timestamps (`commit.committer.date` or `tagger.date` via Git APIs or GitHub Releases API).
-- **Evaluation**: `Dependabot::Nimble::UpdateChecker` extracts the release publication timestamp and compares it against the configured cooldown threshold (e.g. 7 days).
-
----
-
-## 5. Security & Sandboxing Considerations
-
-1. **Zero Untrusted Code Execution**:
-   `.nimble` files can legally contain Nim task blocks (e.g. `task build, "build task": exec "rm -rf ..."`). Dependabot **must never execute `.nimble` files directly using the Nim compiler or shell**. All parsing is performed via declarative static text and regex scanning targeting only top-level `requires` and metadata assignments.
-2. **Network Sandboxing**:
-   All upstream queries are constrained to standard HTTPS git endpoints discovered in the official `packages.json` directory.
-3. **Circular Dependency & ReDoS Immunity**:
-   Version constraint parsing uses bounded regular expressions and linear interval matching to prevent catastrophic backtracking.
-
----
-
-## 6. Implementation Plan & Milestones
+Following the canonical 6-phase rollout defined in [`dependabot-core/NEW_ECOSYSTEMS.md`](https://github.com/dependabot/dependabot-core/blob/main/NEW_ECOSYSTEMS.md) and established by reference implementations (such as [Helm #11726](https://github.com/dependabot/dependabot-core/pull/11726)):
 
 ### Phase 1: Core Implementation
-- [ ] Scaffold `dependabot/nimble` using `rake ecosystem:create[nimble]`
-- [ ] Implement `Dependabot::Nimble::Version` and `Requirement` (SemVer 2.0 with Caret, Tilde, and Range operators)
-- [ ] Implement `FileFetcher` (`*.nimble`, `nimble.lock`, `atlas.config`, `atlas.lock`)
-- [ ] Implement `FileParser` (Declarative AST parsing for `requires` statements)
-- [ ] Implement `UpdateChecker` (Git tag discovery and `packages.json` resolution)
-- [ ] Implement `FileUpdater` (In-place `.nimble` rewriter and lockfile updater)
-- [ ] Implement `MetadataFinder` (GitHub/GitLab release notes & changelogs)
+Scaffolded via `rake ecosystem:create[nimble]` under `nimble/`:
+- `Dependabot::Nimble::FileFetcher`: Locates `*.nimble`, `nimble.lock`, `atlas.config`, and `atlas.lock`. Supports nested directories and monorepos.
+- `Dependabot::Nimble::FileParser`: Extracts dependency declarations via static declarative scanning (strictly avoiding arbitrary code execution of task blocks).
+- `Dependabot::Nimble::UpdateChecker`: Queries `packages.json` to resolve repository URLs, scans Git tags via `git ls-remote --tags`, evaluates SemVer compatibility, and filters unstable prereleases.
+- `Dependabot::Nimble::FileUpdater`: Rewrites `*.nimble` in-place while strictly preserving original indentation (spaces/tabs), quotation styles (single/double), and inline comments. Updates companion `nimble.lock` / `atlas.lock`.
+- `Dependabot::Nimble::MetadataFinder`: Extracts changelogs and release notes from upstream GitHub/GitLab releases or repository `CHANGELOG.md` files.
+- `Dependabot::Nimble::Version` & `Requirement`: SemVer 2.0 parser with support for caret, tilde, and intersection ranges.
 
-### Phase 2: Safety & Cooldown
-- [ ] Implement release timestamp extraction for cooldown support
-- [ ] Implement dangling dependency and cycle detection
+### Phase 2: Advanced Features (Cooldown Support)
+- Implements release timestamp extraction from Git tag commit dates and GitHub Releases API (`commit.committer.date` / `tagger.date`).
+- Enables Dependabot's cooldown window (`cooldown.default-days` and `cooldown.semver-major-days`) to protect against zero-day supply chain attacks.
 
-### Phase 3: Testing & Quality Assurance
-- [ ] Unit tests for all core classes (`spec/dependabot/nimble/*_spec.rb`)
-- [ ] Real-world fixture verification against popular Nim packages:
-  - `zippy` (complex multi-dependency manifest)
-  - `yaml` (multi-line continuations and docstrings)
-  - `cligen` (task blocks and CLI flags)
-  - `nimble.lock` and `atlas.lock` real-world samples
-- [ ] Local dry-run verification using `bin/dry-run.rb nimble <org/repo>`
+### Phase 3: Testing & Validation
+- Comprehensive RSpec unit tests covering all core classes (`spec/dependabot/nimble/*_spec.rb`).
+- Fixture test coverage on complex real-world manifests (`zippy`, `yaml`, `cligen`).
+- Dry-run validation via `bin/dry-run.rb nimble <repo>` verifying lockfile and manifest updates.
+- Smoke tests added to `dependabot/smoke-tests`.
+- **Target Quality Bar**: Minimum 95% success rate across representative test repositories.
 
-### Phase 4: Beta Deployment
-- [ ] Submit PR to `dependabot/dependabot-core`
-- [ ] Enable ecosystem under Dependabot beta feature flag (`allow_beta_ecosystems?`)
-- [ ] Community beta testing across popular Nim repositories on GitHub
+### Phase 4: Coordination with Dependabot Team
+- Coordinate API integration and configuration schema additions.
+- Ensure Docker container build includes required Git/network tools without requiring heavy language runtimes.
+- Wire into Dependabot deployment and CI workflows.
 
-### Phase 5: General Availability (GA)
-- [ ] Address beta community feedback
-- [ ] Remove beta restriction; enable globally on GitHub.com
-- [ ] Update official GitHub Dependabot documentation
+### Phase 5: Beta Release
+- Ecosystem released behind the `allow_beta_ecosystems?` feature flag.
+- Users opt-in via `.github/dependabot.yml`:
+  ```yaml
+  version: 2
+  enable-beta-ecosystems: true
+  updates:
+    - package-ecosystem: "nimble"
+      directory: "/"
+      schedule:
+        interval: "weekly"
+      cooldown:
+        default-days: 3
+        semver-major-days: 7
+  ```
+- Community beta testing across popular Nim GitHub repositories.
+
+### Phase 6: General Availability (GA)
+- Remove beta restriction; enable globally across GitHub.com.
+- Update GitHub documentation.
 
 ---
 
-## 7. Technical Challenges & Mitigations
+## Cooldown Implementation
 
-| Challenge | Mitigation |
+Release dates are obtained from upstream Git tags via the GitHub API or Git commit metadata:
+
+```bash
+git log -1 --format=%aI <tag>
+```
+
+This returns standard ISO-8601 timestamps, allowing `Dependabot::Nimble::UpdateChecker` to compare release age against configured cooldown thresholds without requiring separate registry metadata APIs.
+
+---
+
+## Technical Challenges & Proposed Solutions
+
+| Challenge | Proposed Solution |
 | :--- | :--- |
-| **`.nimble` files are Nim scripts** | Static declarative parser extracts only `requires` statements outside task blocks; never compiles or runs the Nim script. |
-| **Preserving user indentation & comments** | In-place regex substitution preserves exact leading whitespace (spaces/tabs), trailing comments (`# ...`), and quote styles. |
-| **Transitive dependencies in lockfiles** | Direct update of locked package entry combined with delegated solver invocation (`nimble lock`) in containerized helper when full transitive tree re-resolution is requested. |
-| **Custom package URLs (`requires "https://..."`)** | Parser extracts direct Git URLs and queries remotes directly without requiring central registry resolution. |
+| **`.nimble` files can contain arbitrary Nim code** | Static declarative parser extracts only `requires` statements outside task blocks. Never invokes the Nim compiler or shell to evaluate the manifest, preventing arbitrary code execution. |
+| **Preserving user indentation and formatting** | In-place regex substitution matches the exact declaration line, preserving leading indentation (2-space, 4-space, tabs), trailing inline comments (`# ...`), and single/double quotes. |
+| **Transitive lockfile dependency updates** | Direct lockfile JSON updates for exact package pins, with support for delegating to `nimble lock [pkg]` in sandboxed containers when full transitive tree re-resolution is requested. |
+| **Git URL dependencies (`requires "https://..."`)** | Parser extracts direct Git URLs and queries remotes directly without requiring central registry resolution. |
 
 ---
 
-## 8. Contributor Commitment
+## Contributor Commitment
 
-The authors and community maintainers commit to:
-- Authoring the core Ruby implementation and test suites.
-- Providing real-world test repositories and fixtures.
-- Maintaining the `nimble` ecosystem during the beta period.
-- Triaging issues and keeping pace with upstream Nimble and Atlas specification updates.
+I am willing to:
+- [x] Implement the core ecosystem classes (`FileFetcher`, `FileParser`, `UpdateChecker`, `FileUpdater`, `MetadataFinder`)
+- [x] Write comprehensive unit tests and fixtures
+- [x] Maintain the ecosystem during the beta period
+- [x] Respond to issues and community feedback
+- [x] Update documentation
 
 ---
 
-## 9. References & Prior Art
+## Questions for Dependabot Team
 
-- [Nimble Specification](https://github.com/nim-lang/nimble#nimble-usage)
-- [Nim Packages Registry (`packages.json`)](https://github.com/nim-lang/packages)
-- [Atlas Package Manager](https://github.com/nim-lang/atlas)
-- [Renimble Reference Implementation](https://github.com/elijahr/renimble) (Automated Nimble/Atlas updater and in-place rewriter)
-- [Dependabot Core New Ecosystem Guide (`NEW_ECOSYSTEMS.md`)](https://github.com/dependabot/dependabot-core/blob/main/NEW_ECOSYSTEMS.md)
+1. Should we support `atlas.config` / `atlas.lock` under the same `nimble` ecosystem identifier, or would the team prefer a separate ecosystem name (e.g. `atlas`)?
+2. Does the team have preferences regarding pure-Ruby lockfile JSON manipulation vs invoking a containerized `nimble lock` helper for transitive tree resolution?
+3. Are there specific rate-limiting or caching guidelines for the static `packages.json` registry file?
