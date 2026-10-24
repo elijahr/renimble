@@ -54,7 +54,7 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
-      - uses: elijahr/renimble@v1
+      - uses: elijahr/renimble@v0.1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
