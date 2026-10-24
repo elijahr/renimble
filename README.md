@@ -17,11 +17,16 @@ GitHub Dependabot and Renovate lack native understanding of the Nim ecosystem:
 | Feature | Dependabot | Renovate | **Renimble** |
 |:---|:---:|:---:|:---:|
 | **Native Pure-Nim Implementation** | ❌ | ❌ | ✅ |
-| **All Nimble Operators** (`>`, `<`, `>=`, `<=`, `==`, `&`, `^=`, `~=`) | ❌ | ⚠️ (Regex) | ✅ (AST/CST-level) |
-| **VCS Pins & Branches** (`#head`, `#master`, SHA pins) | ❌ | ❌ | ✅ |
+| **All Nimble Operators** (`>`, `<`, `>=`, `<=`, `==`, `!=`, `&`, `^=`, `~=`) | ❌ | ⚠️ (Regex) | ✅ (AST/CST-level) |
+| **Direct Git / HTTPS URLs** (`requires "https://github.com/..."`) | ❌ | ❌ | ✅ |
+| **VCS Pins & Branches** (`#head`, `#master`, 40-char SHA pins) | ❌ | ❌ | ✅ |
 | **Feature Flags** (`pkg[feature] >= 1.0`) | ❌ | ❌ | ✅ |
 | **In-Place Comment & Task Block Preservation** | ❌ | ❌ | ✅ (Zero mangling) |
 | **`nimble.lock` Lockfile Synchronization & Cycle Detection** | ❌ | ❌ | ✅ |
+| **Atlas Workspace & `atlas.lock` Support** | ❌ | ❌ | ✅ |
+| **Delegated Transitive Solver** (`nimble lock` / `atlas pin`) | ❌ | ❌ | ✅ (Graph-safe) |
+| **Compiler Version Synchronization** (Actions, asdf, mise) | ❌ | ⚠️ | ✅ |
+| **Serverless Closed PR Memory** (`<!-- renimble-metadata -->`) | ❌ | ✅ | ✅ (Zero repo state files) |
 | **SemVer Interval Tree ($O(\log N + K)$ Range Algebra)** | ❌ | ❌ | ✅ |
 | **Official Package Registry (`packages.json`) Indexing** | ❌ | ⚠️ | ✅ |
 | **Grouped Pull Requests** | ✅ | ✅ | ✅ |
@@ -80,6 +85,9 @@ updates:
     labels:
       - "dependencies"
       - "nim"
+
+    # Optional: Keep Nim compiler version in sync across .nimble, workflows, & asdf/mise
+    update-compiler-requirement: true
 ```
 
 ### 3. Add the Badge to Your Project
@@ -88,6 +96,41 @@ Show the world your Nim dependencies are kept fresh:
 ```markdown
 [![Renimble](https://img.shields.io/badge/dependencies-renimble-brightgreen?logo=nim)](https://github.com/elijahr/renimble)
 ```
+
+---
+
+## 🎯 Key Capabilities
+
+### ⚡ Comprehensive Nimble & Atlas Support
+* **Atlas Workspaces**: Native detection and parsing of `atlas.config` (`deps`, `nameOverrides`) and `atlas.lock`. Re-resolves pins via `atlas pin`.
+* **Direct Git / HTTPS URLs**: Full support for requirements targeting raw URLs: `requires "https://github.com/nim-lang/zip.git >= 0.3.0"`.
+* **Git Commit SHA Pins**: Automatically detects 40-character Git SHA pins (`#a1b2c3d4...`) and queries upstream remote HEADs to bump commit hashes.
+* **Complex Range Algebra**: Point-stabbing and interval overlap queries powered by an internal SemVer Interval Tree, handling complex intersections (`>= 1.0.0 & <= 2.0.0 & != 1.5.0`).
+
+### 🛡️ Transitive Lockfile Protection (Delegated Native Solver)
+Naively patching top-level versions inside a lockfile corrupts transitive dependency trees. Like `cargo-edit`, `npm-check-updates`, and `uv`, `renimble` delegates lockfile synchronization to the official ecosystem solvers:
+- For Nimble: Runs `nimble lock <package>` to compute clean transitive dependency graphs.
+- For Atlas: Runs `atlas pin` to capture exact repository checkouts without version drift.
+
+### 🧠 Serverless Dismissal Memory (Renovate Pattern)
+Traditional tools require write access to commit state files (like `.renimble/dismissed.json`) to remember ignored versions. In modern CI/CD, GitHub tokens are read-only (`contents: read`) by default.
+`renimble` solves this elegantly by embedding a hidden HTML metadata comment into every generated PR:
+```html
+<!-- renimble-metadata
+{
+  "proposals": [
+    { "package": "zippy", "targetVersion": "0.11.0", "bumpType": "btMinor" }
+  ]
+}
+-->
+```
+When a PR is closed without merging (or via `@renimble close`), `renimble` reads the closed PR metadata from the GitHub API and automatically suppresses future duplicate notifications for that exact version—**zero repository state files committed**.
+
+### 🔄 Nim Compiler Synchronization
+When `update-compiler-requirement: true` is configured, `renimble` keeps your compiler version synchronized across all project layers:
+1. Manifest requirement: `requires "nim >= 2.2.0"` in `.nimble`.
+2. GitHub Actions workflows: `nim-version: '2.2.0'` in `.github/workflows/*.yml`.
+3. Local environment tools: `nim 2.2.0` in `.tool-versions` (asdf/mise) and `nim = "2.2.0"` in `.mise.toml`.
 
 ---
 
@@ -138,15 +181,20 @@ flowchart LR
     F --> G
 ```
 
-- **`src/renimble/version.nim`**: SemVer parser, operator evaluator, and constraint bounds updater mirroring Nimble's engine.
-- **`src/renimble/declarative_parser.nim`**: Declarative `.nimble` parser extracting package requirements, metadata, and byte spans.
+- **`src/renimble/version.nim`**: SemVer parser, operator evaluator (`!=`, `^=`, `~=`, etc.), and constraint bounds updater mirroring Nimble's engine.
+- **`src/renimble/declarative_parser.nim`**: Declarative `.nimble` parser extracting package requirements, metadata, and canonical package names.
 - **`src/renimble/rewriter.nim`**: Non-destructive, comment-preserving in-place file mutator.
 - **`src/renimble/interval_tree.nim`**: $O(\log N + K)$ point-stabbing and range overlap interval tree over SemVer bounds.
 - **`src/renimble/lockfile.nim`**: JSON lockfile parser, SHA updater, and DFS cycle/dangling dependency detection.
+- **`src/renimble/atlas.nim`**: Atlas workspace manager, `atlas.config` JSON reader, and `atlas.lock` pin serializer.
+- **`src/renimble/solver.nim`**: Delegated ecosystem solver interface (`nimble lock` / `atlas pin`).
+- **`src/renimble/dismissal.nim`**: Serverless dismissal memory and hidden PR metadata extractor.
+- **`src/renimble/compiler.nim`**: Multi-target Nim compiler synchronization (Workflows, asdf, mise).
 - **`src/renimble/registry.nim`**: Local cached indexer for `nim-lang/packages`.
-- **`src/renimble/upstream.nim`**: VCS tag explorer using `git ls-remote` without local cloning.
+- **`src/renimble/upstream.nim`**: VCS tag explorer and remote HEAD commit resolver using `git ls-remote`.
 - **`src/renimble/engine.nim`**: Update decision engine, interval-backed ignore evaluation, and rule grouping.
-- **`src/renimble/pr.nim`**: Branch name, commit message, and PR markdown body generator.
+- **`src/renimble/pr.nim`**: Git operations, branch creation, commit generator, and PR creation via `gh`.
+- **`src/renimble/github_actions.nim`**: GitHub Actions runner adapter and step output broadcaster.
 
 ---
 

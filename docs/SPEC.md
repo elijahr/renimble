@@ -70,19 +70,23 @@ flowchart TD
 ### Module Layout
 ```
 src/
-├── renimble.nim                   # Main CLI entrypoint
+├── renimble.nim                   # Main CLI entrypoint (dual local & CI modes)
 └── renimble/
     ├── types.nim                  # Core domain records & types
     ├── config.nim                 # .github/renimble.yml parser
     ├── version.nim                # SemVer parser, operators, & constraint solver
-    ├── declarative_parser.nim     # High-fidelity .nimble declarative parser
+    ├── declarative_parser.nim     # High-fidelity .nimble declarative parser & URL cleaner
     ├── rewriter.nim               # Comment & formatting-preserving .nimble rewriter
-    ├── interval_tree.nim          # SemVer interval tree range algebra
+    ├── interval_tree.nim          # SemVer interval tree range algebra ($O(\log N + K)$)
     ├── lockfile.nim               # nimble.lock JSON parser, serializer, & cycle validator
+    ├── atlas.nim                  # Atlas workspace parser, atlas.config & atlas.lock pins
+    ├── solver.nim                 # Delegated native solver (nimble lock / atlas pin)
+    ├── dismissal.nim              # Serverless closed PR dismissal memory & HTML metadata
+    ├── compiler.nim               # Nim compiler multi-file synchronization (Workflows, asdf, mise)
     ├── registry.nim               # Nim package registry indexer & local cache
     ├── upstream.nim               # VCS / Git / GitHub tag and release query
     ├── engine.nim                 # Dependency update resolution & group clustering
-    ├── pr.nim                     # Git operations, commit styling, & PR formatting
+    ├── pr.nim                     # Git operations, commit styling, & PR creation
     └── github_actions.nim         # GitHub Actions runner adapter & step summaries
 ```
 
@@ -99,6 +103,7 @@ src/
   - `>=` : Greater than or equal to.
   - `<=` : Less than or equal to.
   - `==` : Exact version match.
+  - `!=` : Version exclusion (inequality; decomposes into disjoint intervals in interval tree).
 - **Intersection**:
   - `&` : Logical AND of constraints (e.g., `>= 1.2.0 & <= 1.5.0`).
 - **Pessimistic / Range Operators**:
