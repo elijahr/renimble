@@ -12,16 +12,74 @@
 
 ---
 
-## Background
+## Background & Tooling Architecture
 
 [Nim](https://nim-lang.org/) is a statically typed, compiled systems programming language with clean syntax, expressive metaprogramming, and zero-overhead C/C++/JavaScript compilation targets.
 
-Nimble has served as the official, standard package manager for Nim since 2014, bundled directly in every official compiler release. In addition, [Atlas](https://github.com/nim-lang/atlas) is Nim's modern alternative workspace manager designed by the Nim core team for reproducible, monorepo, and lockfile-first environments.
+### The Relationship Between Nimble and Atlas
+
+A key architectural consideration in the Nim ecosystem is the relationship between **Nimble** and **Atlas**:
+
+* **Nimble** is the official, standard package manager bundled with the Nim compiler since 2014. It specifies the canonical package manifest format (`<package>.nimble`), resolves dependencies against the central registry (`nim-lang/packages`), manages a global package cache in `~/.nimble/pkgs/`, and (since v0.14) generates project-level `nimble.lock` files.
+* **Atlas** is **not a divergent package manager or competing language ecosystem**; it is a **companion workspace cloner and monorepo orchestrator** developed by Andreas Rumpf (Nim's creator).
+  * **Shared Manifest**: Atlas does not invent a new manifest format. It directly parses, consumes, and updates standard `*.nimble` files (`atlas use <pkg>` literally parses and patches the project's `.nimble` file).
+  * **Shared Registry**: Atlas clones from the same Git repositories indexed in `nim-lang/packages`.
+  * **Isolated Directory Modes**: Rather than using a global package directory, Atlas clones dependencies into an isolated workspace directory:
+    * *Default Project Mode*: Clones dependencies into `./deps/<pkg>/`.
+    * *Configurable Directory*: Overridden via `--deps=PATH` or `"deps": "path"` in `atlas.config`.
+    * *Workspace / Monorepo Mode*: A parent workspace contains a single shared `deps/` directory, linking sub-projects via `atlas link <path>`.
+  * **Compiler Configuration (`nim.cfg`)**: Atlas configures the Nim compiler to locate workspace dependencies by generating an idempotent, delimited section in `nim.cfg`:
+    ```ini
+    ############# begin Atlas config section ##########
+    --noNimblePath
+    --path:"../deps/foo/src"
+    --path:"../deps/bar/src"
+    ############# end Atlas config section   ##########
+    ```
+    The `--noNimblePath` switch is crucial: it instructs the Nim compiler to bypass global `~/.nimble/pkgs/` lookups and resolve imports exclusively from the explicit `--path` directories in the workspace.
+  * **Lockfile Coexistence**: Atlas can generate its own workspace lockfile (`atlas.lock`) as well as standard `nimble.lock`.
+
+**Conclusion for Dependabot & Renovate**:
+Support for Nimble and Atlas belongs in the **same ecosystem (`nimble`)**. The manifest is always `*.nimble`. Atlas simply provides an alternative workspace layout and companion lockfile (`atlas.lock` alongside `nimble.lock`). Treating them as separate ecosystems would lead to redundant code and confusing configuration.
+
+### How `.nimble` Files Are Parsed: NimScript vs. Static AST
+
+A common concern with Nim package manifests is that `.nimble` files are technically written in **NimScript**—a Turing-complete subset of Nim executed by the compiler VM (`nim e`), which can define custom tasks (`task test, "...": exec "..."`) and helper procedures.
+
+However, the assumption that `.nimble` manifests *must* be executed as code to read versions or dependencies is **incorrect**:
+
+1. **Static Declarative AST Extraction (The Atlas Approach)**:
+   In `nim-lang/atlas/src/basic/parse_requires.nim`, Atlas itself does **not** execute `.nimble` files to discover requirements. Instead, it uses the Nim compiler's AST parser (`compiler/ast`, `compiler/syntaxes`) to statically inspect top-level assignments (`version = "..."`) and function calls (`requires "foo >= 1.0.0"`). It safely skips all `task`, `before`, `after`, and shell `exec` blocks without evaluation.
+2. **Empirical Reality across 2,978 Packages**:
+   Across the 2,978 packages in `nim-lang/packages`, over **99.5%** define `version = "..."` and `requires "..."` as simple top-level string literal statements.
+3. **Native Nimble CLI Capabilities**:
+   When the Nimble toolchain is available, Nimble provides official built-in inspection commands:
+   * **`nimble dump --json`**: Evaluates the manifest and outputs a complete, structured JSON representation:
+     ```json
+     {
+       "name": "renimble",
+       "version": "0.1.0",
+       "requires": [
+         {
+           "name": "nim",
+           "str": ">= 2.0.0",
+           "ver": { "kind": "verEqLater", "ver": "2.0.0" }
+         }
+       ],
+       "srcDir": "src",
+       "backend": "c"
+     }
+     ```
+   * **`nimble dump`**: Outputs key-value pairs formatted as INI-style strings.
+   * **`nimble check`**: Performs static and semantic validation of manifest correctness.
+4. **Dependabot Security Architecture**:
+   In `dependabot-core`, the parser avoids arbitrary code execution entirely by using **declarative static regex / AST pattern matching** for `.nimble` manifests (analogous to how Dependabot handles Pipfiles or Gemspecs without executing arbitrary Python/Ruby). For environments with language toolchains present, `nimble dump --json` serves as an optional golden reference verifier.
 
 ### Empirical Ecosystem Metrics (Live GitHub API)
 - **Active Repositories**: **14,090+ public Nim repositories** on GitHub (`language:nim`).
 - **Central Package Registry**: **2,978 packages** indexed in [`nim-lang/packages`](https://github.com/nim-lang/packages).
 - **Core Community**: `nim-lang/Nim` (**18,280+ stars**, 1,560+ forks) and `nim-lang/nimble` (**1,400+ stars**, 218 forks).
+- **Community Demand**: Prior open requests such as [`nim-lang/nimble#1043`](https://github.com/nim-lang/nimble/issues/1043) have actively requested Dependabot and Renovate support.
 - **Enterprise & Production Proof**: Major production deployments including Ethereum consensus client ([Nimbus](https://github.com/status-im/nimbus-eth2) securing billions in proof-of-stake value), high-frequency financial trading, and embedded IoT firmware.
 
 Currently, **zero native support exists in Dependabot** for Nim projects. Nim maintainers are forced to manually track upstream releases, run ad-hoc scripts, or build bespoke CI pipelines. Adding `nimble` brings automated security updates and routine version bumping to over 14,000 repositories on GitHub.
@@ -184,6 +242,6 @@ I am willing to:
 
 ## Questions for Dependabot Team
 
-1. Should we support `atlas.config` / `atlas.lock` under the same `nimble` ecosystem identifier, or would the team prefer a separate ecosystem name (e.g. `atlas`)?
-2. Does the team have preferences regarding pure-Ruby lockfile JSON manipulation vs invoking a containerized `nimble lock` helper for transitive tree resolution?
+1. We propose supporting `atlas.lock` and `atlas.config` as companion lockfiles/configurations under the unified `nimble` ecosystem (since Atlas directly consumes `*.nimble` manifests, updates `*.nimble` via `atlas use`, and queries the same `nim-lang/packages` registry). Does the team agree with this unified approach?
+2. Does the team have preferences regarding pure-Ruby lockfile JSON manipulation vs invoking a containerized `nimble lock` or `atlas pin` helper for transitive tree resolution?
 3. Are there specific rate-limiting or caching guidelines for the static `packages.json` registry file?
