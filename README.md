@@ -93,26 +93,33 @@ Show the world your Nim dependencies are kept fresh:
 
 ## 💻 CLI Usage
 
-You can also run `renimble` locally or in custom CI scripts:
+`renimble` is designed to be a transparent local developer tool as well as a headless CI robot:
 
 ```bash
-# Clone and build
-git clone https://github.com/axiomantic/renimble
-cd renimble
-nimble buildRelease
+# 1. Local Report (Default, Read-Only)
+# Inspects .nimble and lockfiles; prints available updates without touching files or git
+renimble
 
-# Run check in current directory
-./bin/renimble --dry-run
+# 2. Local In-Place Update
+# Updates .nimble in-place and re-resolves lockfiles via native solver ('nimble lock' / 'atlas pin')
+# Leaves changes in your working tree for 'git diff' and 'nimble test' (zero git branches/commits)
+renimble update
 
-# Run CI validation check (fails with exit code 1 if dependencies are outdated)
-./bin/renimble --check
+# 3. CI Gate Check
+# Exits with code 1 if dependencies are outdated (ideal for pre-commit hooks or local CI)
+renimble check
+
+# 4. Automated CI Mode
+# Runs full automated GitOps: creates isolated branches, commits, pushes, and opens PRs
+renimble ci
 ```
 
-### CLI Options
+### CLI Commands & Options
+- `(none) / report`: Check for updates and display formatted report (default).
+- `update / apply / -u`: Apply updates in-place in working tree (zero git commits).
+- `check / -k`: Exit code 1 if updates found.
+- `ci / --ci / -g`: Automated CI mode (enabled by default when `GITHUB_ACTIONS=true`).
 - `-c, --config:<path>`: Specify custom configuration file (default: `.github/renimble.yml`).
-- `-d, --dry-run`: Evaluate dependency updates and print report without modifying files or creating PRs.
-- `-k, --check`: Exit with code 1 if any dependency updates are found (great for gating CI).
-- `-g, --git`: Create git branch and commit changes for updates.
 - `-v, --version`: Print version information.
 - `-h, --help`: Display CLI options.
 

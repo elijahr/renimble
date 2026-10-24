@@ -1,5 +1,5 @@
 import std/[unittest, tables, os, strutils, json]
-import ../src/renimble/[types, version, engine, dismissal, atlas, declarative_parser, rewriter, compiler, pr]
+import ../src/renimble/[types, version, engine, dismissal, atlas, declarative_parser, rewriter, compiler, pr, solver]
 
 suite "Advanced Dependency Engine Features":
 
@@ -192,3 +192,19 @@ requires "https://github.com/nim-lang/zip >= 0.3.1"
     let (updatedMise, mod3) = updateMiseTomlNim(mise, "2.2.0")
     check mod3
     check "nim = \"2.2.0\"" in updatedMise
+
+  # ---------------------------------------------------------------------------
+  # 8. Delegated Native Solver for Transitive Graph Verification
+  # ---------------------------------------------------------------------------
+  test "Check command availability detection":
+    check isCommandAvailable("nim")
+    check not isCommandAvailable("nonexistent_binary_tool_xyz987")
+
+  test "Solver handles missing or failing solver cleanly without crash":
+    let res = runNativeLockfileSync(
+      workingDir = getTempDir(),
+      packageNames = @["zippy"],
+      isAtlas = false
+    )
+    # The call must return a structured result without throwing an unhandled exception
+    check res.commandRan.len > 0
