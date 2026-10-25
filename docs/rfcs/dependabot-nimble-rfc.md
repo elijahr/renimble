@@ -39,6 +39,28 @@ A key architectural consideration in the Nim ecosystem is the relationship betwe
     The `--noNimblePath` switch is crucial: it instructs the Nim compiler to bypass global `~/.nimble/pkgs/` lookups and resolve imports exclusively from the explicit `--path` directories in the workspace.
   * **Lockfile Coexistence**: Atlas can generate its own workspace lockfile (`atlas.lock`) as well as standard `nimble.lock`.
 
+### The Three Dependency Cache Topologies in Nim
+
+A dependency updater must account for the three distinct dependency locations that a Nim repository may use:
+
+1. **Global Nimble Mode (`~/.nimble`)**:
+   * *Location*: `$HOME/.nimble/pkgs2/` (or customized via `NIMBLE_DIR` environment variable / `--nimbleDir:<path>` CLI switch).
+   * *Compiler Lookup*: The Nim compiler automatically checks `~/.nimble` by default.
+   * *Lockfile*: `nimble.lock` (v1 JSON).
+2. **Project-Local Nimble Mode (`nimbledeps`)**:
+   * *Location*: `./nimbledeps/pkgs2/` immediately adjacent to the `.nimble` file.
+   * *Trigger*: Automatically activated whenever a directory named `nimbledeps` exists (or when initialized via `nimble setup -l` / `nimble develop -l`).
+   * *Behavior*: Nimble automatically overrides `$nimbleDir` to `./nimbledeps`, ignores `$HOME/.nimble`, and links binaries to `./nimbledeps/bin`.
+   * *Compiler Lookup*: Configured via `nimblePath = "$project/nimbledeps/pkgs2"` in `nim.cfg`.
+   * *Lockfile*: `nimble.lock`.
+3. **Atlas Workspace Mode (`deps`)**:
+   * *Location*: `./deps/` (or custom path configured via `"deps"` in `atlas.config`).
+   * *Compiler Lookup*: Configured via `--noNimblePath` and explicit `--path` entries in `nim.cfg`.
+   * *Lockfile*: `atlas.lock` (and/or `nimble.lock`).
+
+**Ignored Directory Contract for File Discovery**:
+When scanning a repository for `.nimble` manifests, dependency updaters (Dependabot, Renovate, Renimble) **must ignore `nimbledeps/`, `deps/`, and `nimcache/`**. Cloned dependencies inside those directories contain their own `.nimble` files which must never be confused with the root project manifest.
+
 **Conclusion for Dependabot & Renovate**:
 Support for Nimble and Atlas belongs in the **same ecosystem (`nimble`)**. The manifest is always `*.nimble`. Atlas simply provides an alternative workspace layout and companion lockfile (`atlas.lock` alongside `nimble.lock`). Treating them as separate ecosystems would lead to redundant code and confusing configuration.
 
@@ -160,7 +182,7 @@ Following the canonical 6-phase rollout defined in [`dependabot-core/NEW_ECOSYST
 
 ### Phase 1: Core Implementation
 Scaffolded via `rake ecosystem:create[nimble]` under `nimble/`:
-- `Dependabot::Nimble::FileFetcher`: Locates `*.nimble`, `nimble.lock`, `atlas.config`, and `atlas.lock`. Supports nested directories and monorepos.
+- `Dependabot::Nimble::FileFetcher`: Locates `*.nimble`, `nimble.lock`, `atlas.config`, and `atlas.lock`. Supports nested directories and monorepos while strictly excluding `nimbledeps/`, `deps/`, and `nimcache/` from recursive traversal.
 - `Dependabot::Nimble::FileParser`: Extracts dependency declarations via static declarative scanning (strictly avoiding arbitrary code execution of task blocks).
 - `Dependabot::Nimble::UpdateChecker`: Queries `packages.json` to resolve repository URLs, scans Git tags via `git ls-remote --tags`, evaluates SemVer compatibility, and filters unstable prereleases.
 - `Dependabot::Nimble::FileUpdater`: Rewrites `*.nimble` in-place while strictly preserving original indentation (spaces/tabs), quotation styles (single/double), and inline comments. Updates companion `nimble.lock` / `atlas.lock`.
