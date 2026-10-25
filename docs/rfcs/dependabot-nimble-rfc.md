@@ -401,7 +401,7 @@ This returns standard ISO-8601 timestamps, allowing `Dependabot::Nimble::UpdateC
 | :--- | :--- |
 | **`.nimble` files can contain arbitrary Nim code** | Static declarative parser extracts only `requires` statements outside task blocks. Never invokes the Nim compiler or shell to evaluate the manifest, preventing arbitrary code execution. |
 | **Preserving user indentation and formatting** | In-place regex substitution matches the exact declaration line, preserving leading indentation (2-space, 4-space, tabs), trailing inline comments (`# ...`), and single/double quotes. |
-| **Transitive lockfile dependency updates** | Direct lockfile JSON updates for exact package pins, with support for delegating to `nimble lock [pkg]` in sandboxed containers when full transitive tree re-resolution is requested. |
+| **Transitive lockfile dependency updates** | Direct pure-Ruby lockfile JSON updates for exact package pins and Git revisions (`vcsRevision` / `commit`). This maintains zero container dependencies while keeping locked revisions in lockstep with manifest upgrades. Full transitive tree re-resolution can optionally be delegated to a containerized `nimble lock [pkg]` helper in a future phase if language runner support is added. |
 | **Git URL dependencies (`requires "https://..."`)** | Parser extracts direct Git URLs and queries remotes directly without requiring central registry resolution. |
 
 ---
@@ -420,5 +420,5 @@ I am willing to:
 ## Questions for Dependabot Team
 
 1. We propose supporting `atlas.lock` and `atlas.config` as companion lockfiles/configurations under the unified `nimble` ecosystem (since Atlas directly consumes `*.nimble` manifests, updates `*.nimble` via `atlas use`, and queries the same `nim-lang/packages` registry). Does the team agree with this unified approach?
-2. Does the team have preferences regarding pure-Ruby lockfile JSON manipulation vs invoking a containerized `nimble lock` or `atlas pin` helper for transitive tree resolution?
-3. Are there specific rate-limiting or caching guidelines for the static `packages.json` registry file?
+2. Does the team agree with starting with the pure-Ruby zero-runtime implementation (no Nim compiler required in the container) for fast rollout and zero container growth, identical to how Dependabot handles other zero-runtime ecosystems?
+3. Are there specific rate-limiting or caching guidelines for the static `packages.json` registry file (~280 KB gzipped)?
