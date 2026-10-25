@@ -20,14 +20,20 @@
 
 A key architectural consideration in the Nim ecosystem is the relationship between **Nimble** and **Atlas**:
 
-* **Nimble** is the official, standard package manager bundled with the Nim compiler since 2014. It specifies the canonical package manifest format (`<package>.nimble`), resolves dependencies against the central registry (`nim-lang/packages`), manages a global package cache in `~/.nimble/pkgs/`, and (since v0.14) generates project-level `nimble.lock` files.
+* **Nimble** is the official, standard package manager bundled with the Nim compiler since 2014. It specifies the canonical package manifest format (`<package>.nimble`), resolves dependencies against the central registry (`nim-lang/packages`), manages a global package cache in `~/.nimble/pkgs/` (and modern `~/.nimble/pkgs2/`), and (since v0.14) generates project-level `nimble.lock` files.
 * **Atlas** is **not a divergent package manager or competing language ecosystem**; it is a **companion workspace cloner and monorepo orchestrator** developed by Andreas Rumpf (Nim's creator).
   * **Shared Manifest**: Atlas does not invent a new manifest format. It directly parses, consumes, and updates standard `*.nimble` files (`atlas use <pkg>` literally parses and patches the project's `.nimble` file).
   * **Shared Registry**: Atlas clones from the same Git repositories indexed in `nim-lang/packages`.
   * **Isolated Directory Modes**: Rather than using a global package directory, Atlas clones dependencies into an isolated workspace directory:
     * *Default Project Mode*: Clones dependencies into `./deps/<pkg>/`.
-    * *Configurable Directory*: Overridden via `--deps=PATH` or `"deps": "path"` in `atlas.config`.
+    * *Configurable Directory*: Overridden via `--deps=PATH` on the CLI or `"deps": "path"` in `atlas.config`.
     * *Workspace / Monorepo Mode*: A parent workspace contains a single shared `deps/` directory, linking sub-projects via `atlas link <path>`.
+  * **Configuration Search Order (`atlas.config`)**:
+    Atlas resolves its configuration via a deterministic hierarchy (`basic/context.nim:getProjectConfig`):
+    1. *CLI Override*: `<confdirOverride>/atlas.config` (if `--confdir=PATH` is passed).
+    2. *Project Root*: `<projectDir>/atlas.config`.
+    3. *Deps Directory*: `<depsDir>/atlas.config` (*Note: `atlas init` creates `./deps/atlas.config` by default*).
+    4. *Parent Directory Traversal*: If not found locally, Atlas walks parent directories upward to support umbrella monorepos.
   * **Compiler Configuration (`nim.cfg`)**: Atlas configures the Nim compiler to locate workspace dependencies by generating an idempotent, delimited section in `nim.cfg`:
     ```ini
     ############# begin Atlas config section ##########
@@ -36,7 +42,7 @@ A key architectural consideration in the Nim ecosystem is the relationship betwe
     --path:"../deps/bar/src"
     ############# end Atlas config section   ##########
     ```
-    The `--noNimblePath` switch is crucial: it instructs the Nim compiler to bypass global `~/.nimble/pkgs/` lookups and resolve imports exclusively from the explicit `--path` directories in the workspace.
+    The `--noNimblePath` switch is crucial: it instructs the Nim compiler to bypass global `~/.nimble/pkgs/` lookups and resolve imports exclusively from the explicit `--path` directories in the workspace. Atlas automatically inspects each dependency's `srcDir` to generate accurate `--path` directives.
   * **Lockfile Coexistence**: Atlas can generate its own workspace lockfile (`atlas.lock`) as well as standard `nimble.lock`.
 
 ### The Three Dependency Cache Topologies in Nim
@@ -45,21 +51,46 @@ A dependency updater must account for the three distinct dependency locations th
 
 1. **Global Nimble Mode (`~/.nimble`)**:
    * *Location*: `$HOME/.nimble/pkgs2/` (or customized via `NIMBLE_DIR` environment variable / `--nimbleDir:<path>` CLI switch).
+   * *Resolution Hierarchy for `$nimbleDir`*:
+     1. Environment variable: `NIMBLE_DIR`
+     2. Command-line argument: `--nimbleDir:<path>`
+     3. User configuration file: `~/.config/nimble/nimble.ini` (`nimbleDir = "..."`)
+     4. Automatic directory override: If `./nimbledeps/` exists next to `*.nimble`, Nimble overrides `$nimbleDir` to `./nimbledeps`.
+     5. System default: `$HOME/.nimble` (or `%USERPROFILE%\.nimble` on Windows).
+   * *Contents*: `pkgs/` (legacy format), `pkgs2/` (modern SAT-managed checksum packages: `<pkg>-<version>-<checksum>/`), `bin/` (binary shims added to `PATH`), and `packages.json` (registry cache).
    * *Compiler Lookup*: The Nim compiler automatically checks `~/.nimble` by default.
    * *Lockfile*: `nimble.lock` (v1 JSON).
 2. **Project-Local Nimble Mode (`nimbledeps`)**:
    * *Location*: `./nimbledeps/pkgs2/` immediately adjacent to the `.nimble` file.
    * *Trigger*: Automatically activated whenever a directory named `nimbledeps` exists (or when initialized via `nimble setup -l` / `nimble develop -l`).
-   * *Behavior*: Nimble automatically overrides `$nimbleDir` to `./nimbledeps`, ignores `$HOME/.nimble`, and links binaries to `./nimbledeps/bin`.
-   * *Compiler Lookup*: Configured via `nimblePath = "$project/nimbledeps/pkgs2"` in `nim.cfg`.
+   * *Behavior*: Nimble automatically overrides `$nimbleDir` to `./nimbledeps`, ignores `$HOME/.nimble`, sets `NIMBLE_DIR` for child processes, and links binaries to `./nimbledeps/bin`.
+   * *Compiler Lookup*: The compiler does not automatically inspect `nimbledeps`; it is configured via `nimblePath = "$project/nimbledeps/pkgs2"` in `nim.cfg` or `--nimblePath:nimbledeps/pkgs2` on the CLI.
    * *Lockfile*: `nimble.lock`.
 3. **Atlas Workspace Mode (`deps`)**:
    * *Location*: `./deps/` (or custom path configured via `"deps"` in `atlas.config`).
    * *Compiler Lookup*: Configured via `--noNimblePath` and explicit `--path` entries in `nim.cfg`.
    * *Lockfile*: `atlas.lock` (and/or `nimble.lock`).
 
+### Comprehensive Workspace & Build Artifacts Matrix
+
+To ensure that Dependabot, Renovate, and Renimble correctly parse projects without false positives or index corruption, the table below documents all artifacts encountered in Nim workspaces:
+
+| Path / File | Origin Tool | Purpose | Updater Behavior |
+| :--- | :--- | :--- | :--- |
+| `*.nimble` | Nimble / Atlas | Canonical package manifest (`version`, `requires`). | **Primary manifest** parsed and updated in-place. |
+| `nimble.lock` | Nimble / Atlas | Nimble v1 JSON lockfile (`version`, `vcsRevision`, `checksums`). | **Primary lockfile** updated when present. |
+| `atlas.lock` | Atlas | Atlas JSON lockfile (`commit`, `url`, `version`). | **Companion lockfile** updated when present. |
+| `atlas.config` | Atlas | Workspace configuration (`deps` directory, name/URL overrides). | Parsed to locate custom `deps` paths; preserved. |
+| `nim.cfg` | Nim Compiler | Project compiler flags, search paths, and `--noNimblePath`. | Delimited Atlas sections and `nimblePath` preserved. |
+| `nimbledeps/` | Nimble (`-l`) | Project-local dependency cache (`nimbledeps/pkgs2/`). | **STRICTLY EXCLUDED** from recursive manifest scans. |
+| `deps/` | Atlas | Workspace cloned dependencies. | **STRICTLY EXCLUDED** from recursive manifest scans. |
+| `nimcache/` / `.nimcache/` | Nim Compiler | Compiler intermediate C/C++/JS cache. | **STRICTLY EXCLUDED** from recursive manifest scans. |
+| `nimble.paths` | Nimble | Ephemeral build search paths file. | Ignored; pruned by Atlas during `patchNimCfg`. |
+| `nimble.develop` | Nimble | Pointers for packages in active local development. | Ignored during version bumping. |
+| `.nimble-link` | Atlas | Pointer files inside `deps/` linking sibling packages. | Ignored during version bumping. |
+
 **Ignored Directory Contract for File Discovery**:
-When scanning a repository for `.nimble` manifests, dependency updaters (Dependabot, Renovate, Renimble) **must ignore `nimbledeps/`, `deps/`, and `nimcache/`**. Cloned dependencies inside those directories contain their own `.nimble` files which must never be confused with the root project manifest.
+When scanning a repository for `.nimble` manifests, dependency updaters (Dependabot, Renovate, Renimble) **must ignore `nimbledeps/`, `deps/`, `nimcache/`, and `.nimcache/`**. Cloned dependencies inside those directories contain their own `.nimble` files which must never be confused with the root project manifest.
 
 **Conclusion for Dependabot & Renovate**:
 Support for Nimble and Atlas belongs in the **same ecosystem (`nimble`)**. The manifest is always `*.nimble`. Atlas simply provides an alternative workspace layout and companion lockfile (`atlas.lock` alongside `nimble.lock`). Treating them as separate ecosystems would lead to redundant code and confusing configuration.
