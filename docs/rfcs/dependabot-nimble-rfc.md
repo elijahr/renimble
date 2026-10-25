@@ -176,6 +176,130 @@ Atlas projects specify dependencies in `atlas.config` and lock exact SHAs in `at
 
 ---
 
+## Registry Architecture & Package Resolution
+
+Nimble uses a decentralized, Git-backed package ecosystem coordinated by a central index:
+
+### 1. Central Package Index (`packages.json`)
+* **Endpoint**: `https://raw.githubusercontent.com/nim-lang/packages/master/packages.json` (also mirrored at `https://packages.nim-lang.org/packages.json`).
+* **Format**: A single JSON array (~1.4 MB uncompressed, ~280 KB gzipped) containing metadata for all 2,978 indexed packages:
+  ```json
+  [
+    {
+      "name": "zippy",
+      "url": "https://github.com/guzba/zippy",
+      "method": "git",
+      "tags": ["zip", "compression", "inflate", "deflate"],
+      "description": "Pure Nim implementation of deflate, zlib, gzip and zip.",
+      "license": "MIT",
+      "web": "https://github.com/guzba/zippy"
+    }
+  ]
+  ```
+* **Resolution Workflow in Dependabot**:
+  1. `Dependabot::Nimble::UpdateChecker` fetches and parses `packages.json` once per update run, caching the name-to-URL lookup table in memory.
+  2. For a dependency declared as `requires "zippy >= 0.10.0"`, the checker resolves `"zippy"` $\rightarrow$ `https://github.com/guzba/zippy`.
+  3. The checker queries available releases via the GitHub API (or `git ls-remote --tags` for non-GitHub hosts).
+  4. Tags are parsed using `Dependabot::Nimble::Version` to identify the latest compatible SemVer release.
+
+### 2. Direct Git & VCS Dependencies
+Nimble natively supports non-registry direct Git URLs and specific branch/commit references:
+* `requires "https://github.com/user/pkg >= 1.0.0"`
+* `requires "https://github.com/user/pkg#head"`
+* `requires "pkg#devel"`
+* `requires "pkg#a1b2c3d"`
+
+For direct URLs, `UpdateChecker` bypasses `packages.json` and queries the remote Git repository directly. For commit/branch pins, Dependabot resolves the latest commit SHA on the target branch.
+
+---
+
+## Container Footprint: Pure-Ruby Zero-Runtime Architecture
+
+A major concern for the Dependabot Core maintainers when adopting new ecosystems is the Docker container footprint and additional language toolchain maintenance:
+
+> [!IMPORTANT]
+> **Zero New System Dependencies Required**  
+> Nimble support in `dependabot-core` is architected as a **pure-Ruby implementation**.  
+> It does **not** require installing the Nim compiler (`nim`), the Nimble package manager (`nimble`), or the Atlas cloner (`atlas`) into the Dependabot Docker updater container.
+
+| Component | Implementation Strategy | Dependencies |
+| :--- | :--- | :--- |
+| **`FileFetcher`** | Pure Ruby filesystem traversal excluding `nimbledeps/`, `deps/`, `nimcache/`. | None (standard Dependabot core) |
+| **`FileParser`** | Pure Ruby static scanner using declarative AST/regex pattern matching. | None (zero eval / zero shell) |
+| **`UpdateChecker`** | Pure Ruby HTTP client (`Excon`) for `packages.json` + GitHub API / Git tags. | None (standard Dependabot networking) |
+| **`FileUpdater`** | Pure Ruby in-place rewriter for `.nimble` + JSON serializer for `nimble.lock` and `atlas.lock`. | None (standard Ruby `json`) |
+| **`MetadataFinder`** | Standard Dependabot GitHub/GitLab release notes fetcher. | None |
+
+This zero-runtime architecture ensures:
+1. **Zero Docker Image Growth**: Adds negligible bytes to the Dependabot updater image (only Ruby source files).
+2. **Zero Security Attack Surface**: Untrusted `.nimble` manifests cannot exploit compiler bugs or execute arbitrary shell commands during dependency updates.
+3. **High Portability**: Runs instantly on standard GitHub Actions runners and GitHub Enterprise Server.
+
+---
+
+## Class Architecture & Contracts
+
+Following standard `dependabot-core` conventions:
+
+```mermaid
+classDiagram
+    class FileFetcher {
+      +fetch_files() List~DependencyFile~
+    }
+    class FileParser {
+      +parse() List~Dependency~
+    }
+    class UpdateChecker {
+      +latest_version() Version
+      +latest_resolvable_version() Version
+      +updated_requirements() List~Hash~
+    }
+    class FileUpdater {
+      +updated_dependency_files() List~DependencyFile~
+    }
+    class Version {
+      +<=>()
+      +prerelease?()
+    }
+    class Requirement {
+      +satisfied_by?(version)
+    }
+
+    FileFetcher <|-- Dependabot_Nimble_FileFetcher
+    FileParser <|-- Dependabot_Nimble_FileParser
+    UpdateChecker <|-- Dependabot_Nimble_UpdateChecker
+    FileUpdater <|-- Dependabot_Nimble_FileUpdater
+    Version <|-- Dependabot_Nimble_Version
+    Requirement <|-- Dependabot_Nimble_Requirement
+```
+
+### 1. `Dependabot::Nimble::FileParser` Contract
+* Scans `*.nimble` files in the target directory.
+* Extracts dependencies matching `requires <args>` syntax:
+  * String literals: `"pkg >= 1.0.0"`
+  * Comma-delimited sequences: `"foo >= 1.0", "bar >= 2.0"`
+  * Feature flags: `"react [gui] >= 1.0.0"`
+  * VCS branches/hashes: `"pkg#head"`, `"pkg#b8c1d2e"`
+* Matches against existing `nimble.lock` and/or `atlas.lock` to attach current pinned versions, Git SHAs, and checksums.
+* Returns an array of `Dependabot::Dependency` objects with ecosystem metadata.
+
+### 2. `Dependabot::Nimble::UpdateChecker` Contract
+* Evaluates configured update strategies (`bump_versions`, `lockfile_only`, or `cooldown`).
+* Verifies compatibility against `nim` compiler requirements (e.g. `requires "nim >= 2.0.0"`).
+* Compares latest upstream release against configured `cooldown.default-days` and `cooldown.semver-major-days`.
+* Emits updated requirement strings (e.g. `"pkg >= 1.2.0"` or `"pkg >= 1.0.0 & <= 1.2.0"`).
+
+### 3. `Dependabot::Nimble::FileUpdater` Contract
+* **Manifest Rewriting**: Preserves the user's exact file layout:
+  * Retains original indentation (2 spaces, 4 spaces, tabs).
+  * Retains quote styles (`"` vs `'`).
+  * Retains inline comments (`# ...`) and trailing continuation commas.
+* **Lockfile Rewriting**:
+  * For `nimble.lock`: Updates `packages[name].version` and `packages[name].vcsRevision`, sorting package keys alphabetically with 2-space JSON indentation.
+  * For `atlas.lock`: Updates `packages[name].commit` and `packages[name].version` with 2-space JSON formatting.
+
+---
+
 ## Implementation Plan
 
 Following the canonical 6-phase rollout defined in [`dependabot-core/NEW_ECOSYSTEMS.md`](https://github.com/dependabot/dependabot-core/blob/main/NEW_ECOSYSTEMS.md) and established by reference implementations (such as [Helm #11726](https://github.com/dependabot/dependabot-core/pull/11726)):
