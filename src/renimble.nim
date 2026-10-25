@@ -1,7 +1,7 @@
 import std/[os, parseopt, strutils, options, tables]
 import renimble/[types, version, declarative_parser, rewriter, lockfile, config, registry, engine, pr, github_actions, atlas, dismissal, solver, compiler]
 
-const RenimbleVersion = "0.1.0"
+const RenimbleVersion = "0.1.1"
 
 type
   CliMode = enum

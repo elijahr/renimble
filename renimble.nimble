@@ -1,6 +1,6 @@
 # Package
 
-version       = "0.1.0"
+version       = "0.1.1"
 author        = "Axiomantic"
 description   = "Definitive automated dependency updater for Nim projects (.nimble & nimble.lock)"
 license       = "MIT"
