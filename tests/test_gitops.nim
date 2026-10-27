@@ -13,7 +13,7 @@ suite "Git Operations & PR Engine":
       dependency: Dependency(name: "zippy"),
       currentVersion: "0.10.4",
       targetVersion: "0.11.0",
-      bumpType: btMinor
+      bumpType: btMinor,
     )
     check generateBranchName(@[p1]) == "renimble/zippy-0.11.0"
     check generateBranchName(@[p1], some("core")) == "renimble/group-core"
@@ -22,7 +22,7 @@ suite "Git Operations & PR Engine":
       dependency: Dependency(name: "yaml"),
       currentVersion: "1.0.0",
       targetVersion: "1.1.0",
-      bumpType: btMinor
+      bumpType: btMinor,
     )
     check generateBranchName(@[p1, p2]) == "renimble/updates"
 
@@ -31,7 +31,7 @@ suite "Git Operations & PR Engine":
       dependency: Dependency(name: "zippy"),
       currentVersion: "0.10.4",
       targetVersion: "0.11.0",
-      bumpType: btMinor
+      bumpType: btMinor,
     )
     let msg1 = generateCommitMessage(@[p1], "chore(deps)")
     check msg1 == "chore(deps): bump zippy from 0.10.4 to 0.11.0"
@@ -40,7 +40,7 @@ suite "Git Operations & PR Engine":
       dependency: Dependency(name: "yaml"),
       currentVersion: "1.0.0",
       targetVersion: "1.1.0",
-      bumpType: btMinor
+      bumpType: btMinor,
     )
     let msg2 = generateCommitMessage(@[p1, p2], "fix(deps)")
     check "fix(deps): bump 2 dependencies" in msg2
@@ -53,13 +53,14 @@ suite "Git Operations & PR Engine":
       currentVersion: "0.10.4",
       targetVersion: "0.11.0",
       bumpType: btMinor,
-      changelogUrl: some("https://github.com/guzba/zippy/releases")
+      changelogUrl: some("https://github.com/guzba/zippy/releases"),
     )
     let title = generatePrTitle(@[p1])
     check title == "chore(deps): bump zippy from 0.10.4 to 0.11.0"
 
     let body = generatePrBody(@[p1])
-    check "| `zippy` | `0.10.4` | `0.11.0` | Minor | [Changelog](https://github.com/guzba/zippy/releases) |" in body
+    check "| `zippy` | `0.10.4` | `0.11.0` | Minor | [Changelog](https://github.com/guzba/zippy/releases) |" in
+      body
     check "@renimble rebase" in body
 
   test "Isolated local GitOps workflow in temp git repository":
@@ -82,7 +83,8 @@ suite "Git Operations & PR Engine":
       writeFile(initialFile, "Initial content\n")
       let stageInit = gitStageFiles(@["test.txt"], tmpDir)
       check stageInit.success
-      let commitInit = gitCommit("Initial commit", "Test Runner", "test@example.com", tmpDir)
+      let commitInit =
+        gitCommit("Initial commit", "Test Runner", "test@example.com", tmpDir)
       check commitInit.success
 
       # Verify clean status
@@ -95,7 +97,9 @@ suite "Git Operations & PR Engine":
       check gitBranchExists("test-branch", tmpDir)
 
       # Test modifications and staging
-      writeFile(tmpDir / "app.nimble", "version = \"0.1.0\"\nrequires \"zippy >= 0.10.4\"\n")
+      writeFile(
+        tmpDir / "app.nimble", "version = \"0.1.0\"\nrequires \"zippy >= 0.10.4\"\n"
+      )
       check gitIsDirty(tmpDir)
 
       # Test executeGitOps
@@ -103,14 +107,14 @@ suite "Git Operations & PR Engine":
         dependency: Dependency(name: "zippy"),
         currentVersion: "0.10.4",
         targetVersion: "0.11.0",
-        bumpType: btMinor
+        bumpType: btMinor,
       )
-      
+
       let opsReport = executeGitOps(
         proposals = @[proposal],
         modifiedFiles = @["app.nimble"],
         baseBranch = "main",
-        workingDir = tmpDir
+        workingDir = tmpDir,
       )
 
       check opsReport.success
@@ -122,6 +126,5 @@ suite "Git Operations & PR Engine":
       let logRes = runGit(["log", "-1", "--pretty=%B"], tmpDir)
       check logRes.success
       check "chore(deps): bump zippy from 0.10.4 to 0.11.0" in logRes.output
-
     finally:
       removeDir(tmpDir)

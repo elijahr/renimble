@@ -42,12 +42,18 @@ suite "Nimble Version & Constraint Engine":
   test "Caret (^=) and Tilde (~=) operators":
     check satisfiesSingle(parseSemVersion("1.2.4"), parseSingleConstraint("^= 1.2.3"))
     check satisfiesSingle(parseSemVersion("1.5.0"), parseSingleConstraint("^= 1.2.3"))
-    check not satisfiesSingle(parseSemVersion("2.0.0"), parseSingleConstraint("^= 1.2.3"))
-    check not satisfiesSingle(parseSemVersion("1.2.2"), parseSingleConstraint("^= 1.2.3"))
+    check not satisfiesSingle(
+      parseSemVersion("2.0.0"), parseSingleConstraint("^= 1.2.3")
+    )
+    check not satisfiesSingle(
+      parseSemVersion("1.2.2"), parseSingleConstraint("^= 1.2.3")
+    )
 
     # Tilde: patch-level bumps only
     check satisfiesSingle(parseSemVersion("1.2.4"), parseSingleConstraint("~= 1.2.3"))
-    check not satisfiesSingle(parseSemVersion("1.3.0"), parseSingleConstraint("~= 1.2.3"))
+    check not satisfiesSingle(
+      parseSemVersion("1.3.0"), parseSingleConstraint("~= 1.2.3")
+    )
 
   test "Intersected constraints with '&'":
     let c = parseVersionConstraint(">= 1.0.0 & <= 1.5.0")
@@ -64,5 +70,6 @@ suite "Nimble Version & Constraint Engine":
     let updated2 = updateConstraintString("^= 0.4.1", parseSemVersion("0.5.0"))
     check updated2 == "^= 0.5.0"
 
-    let updated3 = updateConstraintString(">= 1.0.0 & <= 1.5.0", parseSemVersion("1.6.0"))
+    let updated3 =
+      updateConstraintString(">= 1.0.0 & <= 1.5.0", parseSemVersion("1.6.0"))
     check updated3 == ">= 1.6.0 & <= 1.6.0"

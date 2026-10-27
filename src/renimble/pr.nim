@@ -17,7 +17,9 @@ type
     success*: bool
     error*: string
 
-proc generateBranchName*(proposals: seq[UpdateProposal], groupName: Option[string] = none(string)): string =
+proc generateBranchName*(
+    proposals: seq[UpdateProposal], groupName: Option[string] = none(string)
+): string =
   if groupName.isSome:
     return "renimble/group-" & groupName.get
   elif proposals.len == 1:
@@ -26,47 +28,70 @@ proc generateBranchName*(proposals: seq[UpdateProposal], groupName: Option[strin
   else:
     return "renimble/updates"
 
-proc generateCommitMessage*(proposals: seq[UpdateProposal], prefix: string = "chore(deps)"): string =
+proc generateCommitMessage*(
+    proposals: seq[UpdateProposal], prefix: string = "chore(deps)"
+): string =
   if proposals.len == 1:
     let p = proposals[0]
-    return prefix & ": bump " & p.dependency.name & " from " & p.currentVersion & " to " & p.targetVersion
+    return
+      prefix & ": bump " & p.dependency.name & " from " & p.currentVersion & " to " &
+      p.targetVersion
   else:
     var msg = prefix & ": bump " & $proposals.len & " dependencies\n\n"
     for p in proposals:
-      msg.add("- " & p.dependency.name & " from " & p.currentVersion & " to " & p.targetVersion & "\n")
+      msg.add(
+        "- " & p.dependency.name & " from " & p.currentVersion & " to " & p.targetVersion &
+          "\n"
+      )
     return msg.strip()
 
-proc generatePrTitle*(proposals: seq[UpdateProposal], groupName: Option[string] = none(string)): string =
+proc generatePrTitle*(
+    proposals: seq[UpdateProposal], groupName: Option[string] = none(string)
+): string =
   if groupName.isSome:
-    return "chore(deps): update " & groupName.get & " group (" & $proposals.len & " packages)"
+    return
+      "chore(deps): update " & groupName.get & " group (" & $proposals.len & " packages)"
   elif proposals.len == 1:
     let p = proposals[0]
-    return "chore(deps): bump " & p.dependency.name & " from " & p.currentVersion & " to " & p.targetVersion
+    return
+      "chore(deps): bump " & p.dependency.name & " from " & p.currentVersion & " to " &
+      p.targetVersion
   else:
     return "chore(deps): bump " & $proposals.len & " dependencies"
 
 proc generatePrBody*(proposals: seq[UpdateProposal]): string =
-  result = "Bumps dependencies using **[renimble](https://github.com/elijahr/renimble)**.\n\n"
+  result =
+    "Bumps dependencies using **[renimble](https://github.com/elijahr/renimble)**.\n\n"
   result.add("### Updates\n\n")
   result.add("| Package | From | To | Type | Links |\n")
   result.add("|:---|:---|:---|:---|:---|\n")
 
   for p in proposals:
-    let bumpStr = case p.bumpType
+    let bumpStr =
+      case p.bumpType
       of btMajor: "**Major**"
       of btMinor: "Minor"
       of btPatch: "Patch"
       of btVcs: "VCS Pin"
       of btNone: "None"
 
-    let cl = if p.changelogUrl.isSome: "[Changelog](" & p.changelogUrl.get & ")" else: "-"
-    result.add("| `" & p.dependency.name & "` | `" & p.currentVersion & "` | `" & p.targetVersion & "` | " & bumpStr & " | " & cl & " |\n")
+    let cl =
+      if p.changelogUrl.isSome:
+        "[Changelog](" & p.changelogUrl.get & ")"
+      else:
+        "-"
+    result.add(
+      "| `" & p.dependency.name & "` | `" & p.currentVersion & "` | `" & p.targetVersion &
+        "` | " & bumpStr & " | " & cl & " |\n"
+    )
 
   result.add("\n---\n")
   result.add("<details>\n<summary>Renimble Commands & Options</summary>\n\n")
   result.add("You can trigger Renimble actions by commenting on this PR:\n")
   result.add("- `@renimble rebase` will rebase this branch against the target branch\n")
-  result.add("- `@renimble recreate` will recreate this PR and recalculate constraints\n")
+  result.add(
+    "- `@renimble recreate` will recreate this PR and recalculate constraints\n"
+  )
   result.add("- `@renimble close` will close this PR and ignore this version bump\n")
   result.add("</details>\n")
 
@@ -96,7 +121,7 @@ proc runGit*(args: openArray[string], workingDir: string = ""): GitCommandResult
       command = "git",
       workingDir = workingDir,
       args = args,
-      options = {poUsePath, poStdErrToStdOut}
+      options = {poUsePath, poStdErrToStdOut},
     )
     let output = p.outputStream.readAll()
     let exitCode = p.waitForExit()
@@ -105,14 +130,11 @@ proc runGit*(args: openArray[string], workingDir: string = ""): GitCommandResult
       success: exitCode == 0,
       exitCode: exitCode,
       output: output.strip(),
-      command: "git " & args.join(" ")
+      command: "git " & args.join(" "),
     )
   except CatchableError as e:
     return GitCommandResult(
-      success: false,
-      exitCode: -1,
-      output: e.msg,
-      command: "git " & args.join(" ")
+      success: false, exitCode: -1, output: e.msg, command: "git " & args.join(" ")
     )
 
 proc gitCurrentBranch*(workingDir: string = ""): string =
@@ -124,10 +146,16 @@ proc gitCurrentBranch*(workingDir: string = ""): string =
 
 proc gitBranchExists*(branchName: string, workingDir: string = ""): bool =
   ## Returns true if branchName exists locally.
-  let res = runGit(["show-ref", "--verify", "--quiet", "refs/heads/" & branchName], workingDir)
+  let res =
+    runGit(["show-ref", "--verify", "--quiet", "refs/heads/" & branchName], workingDir)
   return res.success
 
-proc gitCheckoutBranch*(branchName: string, create: bool = false, baseBranch: string = "", workingDir: string = ""): GitCommandResult =
+proc gitCheckoutBranch*(
+    branchName: string,
+    create: bool = false,
+    baseBranch: string = "",
+    workingDir: string = "",
+): GitCommandResult =
   ## Checks out a branch, optionally creating / resetting it from baseBranch.
   if create:
     if baseBranch.len > 0:
@@ -137,11 +165,17 @@ proc gitCheckoutBranch*(branchName: string, create: bool = false, baseBranch: st
   else:
     return runGit(["checkout", branchName], workingDir)
 
-proc gitCreateBranch*(branchName: string, baseBranch: string = "", workingDir: string = ""): GitCommandResult =
+proc gitCreateBranch*(
+    branchName: string, baseBranch: string = "", workingDir: string = ""
+): GitCommandResult =
   ## Convenience helper to create and checkout branch from baseBranch.
-  return gitCheckoutBranch(branchName, create = true, baseBranch = baseBranch, workingDir = workingDir)
+  return gitCheckoutBranch(
+    branchName, create = true, baseBranch = baseBranch, workingDir = workingDir
+  )
 
-proc gitStageFiles*(files: openArray[string], workingDir: string = ""): GitCommandResult =
+proc gitStageFiles*(
+    files: openArray[string], workingDir: string = ""
+): GitCommandResult =
   ## Stages the given files with git add.
   if files.len == 0:
     return GitCommandResult(success: true, exitCode: 0, output: "", command: "git add")
@@ -150,12 +184,21 @@ proc gitStageFiles*(files: openArray[string], workingDir: string = ""): GitComma
     args.add(f)
   return runGit(args, workingDir)
 
-proc gitCommit*(message: string, authorName: string = "renimble[bot]", authorEmail: string = "renimble[bot]@users.noreply.github.com", workingDir: string = ""): GitCommandResult =
+proc gitCommit*(
+    message: string,
+    authorName: string = "renimble[bot]",
+    authorEmail: string = "renimble[bot]@users.noreply.github.com",
+    workingDir: string = "",
+): GitCommandResult =
   ## Commits staged changes with custom author info.
   let args = @[
-    "-c", "user.name=" & authorName,
-    "-c", "user.email=" & authorEmail,
-    "commit", "-m", message
+    "-c",
+    "user.name=" & authorName,
+    "-c",
+    "user.email=" & authorEmail,
+    "commit",
+    "-m",
+    message,
   ]
   return runGit(args, workingDir)
 
@@ -168,7 +211,12 @@ proc gitIsDirty*(workingDir: string = ""): bool =
   ## Returns true if the git worktree has uncommitted modifications.
   return gitStatusPorcelain(workingDir).len > 0
 
-proc gitPush*(branchName: string, remote: string = "origin", force: bool = false, workingDir: string = ""): GitCommandResult =
+proc gitPush*(
+    branchName: string,
+    remote: string = "origin",
+    force: bool = false,
+    workingDir: string = "",
+): GitCommandResult =
   ## Pushes the branch to remote.
   var args: seq[string] = @["push"]
   if force:
@@ -179,14 +227,14 @@ proc gitPush*(branchName: string, remote: string = "origin", force: bool = false
   return runGit(args, workingDir)
 
 proc executeGitOps*(
-  proposals: seq[UpdateProposal],
-  modifiedFiles: seq[string],
-  baseBranch: string = "main",
-  groupName: Option[string] = none(string),
-  authorName: string = "renimble[bot]",
-  authorEmail: string = "renimble[bot]@users.noreply.github.com",
-  workingDir: string = "",
-  commitPrefix: string = "chore(deps)"
+    proposals: seq[UpdateProposal],
+    modifiedFiles: seq[string],
+    baseBranch: string = "main",
+    groupName: Option[string] = none(string),
+    authorName: string = "renimble[bot]",
+    authorEmail: string = "renimble[bot]@users.noreply.github.com",
+    workingDir: string = "",
+    commitPrefix: string = "chore(deps)",
 ): GitOpsReport =
   ## Orchestrates branch creation, file staging, and commit generation.
   let branchName = generateBranchName(proposals, groupName)
@@ -201,7 +249,7 @@ proc executeGitOps*(
     prBody: prBody,
     stagedFiles: @modifiedFiles,
     success: false,
-    error: ""
+    error: "",
   )
 
   # 1. Create and switch to new branch
@@ -225,20 +273,17 @@ proc executeGitOps*(
   result.success = true
 
 proc createPullRequest*(
-  report: GitOpsReport,
-  baseBranch: string = "main",
-  labels: seq[string] = @[],
-  reviewers: seq[string] = @[],
-  assignees: seq[string] = @[],
-  workingDir: string = ""
+    report: GitOpsReport,
+    baseBranch: string = "main",
+    labels: seq[string] = @[],
+    reviewers: seq[string] = @[],
+    assignees: seq[string] = @[],
+    workingDir: string = "",
 ): GitCommandResult =
   ## Creates a GitHub pull request for the committed branch using gh CLI.
   var args: seq[string] = @[
-    "pr", "create",
-    "--base", baseBranch,
-    "--head", report.branchName,
-    "--title", report.prTitle,
-    "--body", report.prBody
+    "pr", "create", "--base", baseBranch, "--head", report.branchName, "--title",
+    report.prTitle, "--body", report.prBody,
   ]
   for lbl in labels:
     args.add("--label")
@@ -255,7 +300,7 @@ proc createPullRequest*(
       command = "gh",
       workingDir = workingDir,
       args = args,
-      options = {poUsePath, poStdErrToStdOut}
+      options = {poUsePath, poStdErrToStdOut},
     )
     let output = p.outputStream.readAll()
     let exitCode = p.waitForExit()
@@ -264,12 +309,9 @@ proc createPullRequest*(
       success: exitCode == 0,
       exitCode: exitCode,
       output: output.strip(),
-      command: "gh " & args.join(" ")
+      command: "gh " & args.join(" "),
     )
   except CatchableError as e:
     return GitCommandResult(
-      success: false,
-      exitCode: -1,
-      output: e.msg,
-      command: "gh " & args.join(" ")
+      success: false, exitCode: -1, output: e.msg, command: "gh " & args.join(" ")
     )

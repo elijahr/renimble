@@ -1,8 +1,8 @@
 import std/[unittest, tables, strutils, options]
-import ../src/renimble/[types, version, declarative_parser, rewriter, lockfile, upstream]
+import
+  ../src/renimble/[types, version, declarative_parser, rewriter, lockfile, upstream]
 
 suite "Adversarial Testing Suite & Negative Controls":
-
   # ---------------------------------------------------------------------------
   # Pillar 1: Malformed SemVer Strings & Invalid Constraint Operators
   # ---------------------------------------------------------------------------
@@ -105,29 +105,19 @@ suite "Adversarial Testing Suite & Negative Controls":
 
   test "Preserve exact 2-space indentation byte-for-byte":
     let original = [
-      "# Package Manifest",
-      "version = \"1.0.0\"",
-      "",
-      "# Dependencies",
+      "# Package Manifest", "version = \"1.0.0\"", "", "# Dependencies",
       "  requires \"nim >= 2.0.0\"",
       "  requires \"zippy >= 0.10.4\"  # trailing comment",
-      "  requires \"yaml >= 2.1.0\"",
-      "",
-      "task build, \"Build\":",
-      "  exec \"nim c src/main.nim\""
+      "  requires \"yaml >= 2.1.0\"", "", "task build, \"Build\":",
+      "  exec \"nim c src/main.nim\"",
     ].join("\n")
 
     let expected = [
-      "# Package Manifest",
-      "version = \"1.0.0\"",
-      "",
-      "# Dependencies",
+      "# Package Manifest", "version = \"1.0.0\"", "", "# Dependencies",
       "  requires \"nim >= 2.0.0\"",
       "  requires \"zippy >= 0.11.0\"  # trailing comment",
-      "  requires \"yaml >= 2.1.0\"",
-      "",
-      "task build, \"Build\":",
-      "  exec \"nim c src/main.nim\""
+      "  requires \"yaml >= 2.1.0\"", "", "task build, \"Build\":",
+      "  exec \"nim c src/main.nim\"",
     ].join("\n")
 
     let actual = rewriteNimbleFile(original, "zippy", ">= 0.11.0")
@@ -135,15 +125,13 @@ suite "Adversarial Testing Suite & Negative Controls":
 
   test "Preserve exact 4-space indentation byte-for-byte":
     let original = [
-      "    requires \"nim >= 2.0.0\"",
-      "    requires \"zippy >= 0.10.4\"",
-      "    requires \"yaml >= 2.1.0\""
+      "    requires \"nim >= 2.0.0\"", "    requires \"zippy >= 0.10.4\"",
+      "    requires \"yaml >= 2.1.0\"",
     ].join("\n")
 
     let expected = [
-      "    requires \"nim >= 2.0.0\"",
-      "    requires \"zippy >= 0.11.0\"",
-      "    requires \"yaml >= 2.1.0\""
+      "    requires \"nim >= 2.0.0\"", "    requires \"zippy >= 0.11.0\"",
+      "    requires \"yaml >= 2.1.0\"",
     ].join("\n")
 
     let actual = rewriteNimbleFile(original, "zippy", ">= 0.11.0")
@@ -151,15 +139,13 @@ suite "Adversarial Testing Suite & Negative Controls":
 
   test "Preserve exact tab indentation byte-for-byte":
     let original = [
-      "\trequires \"nim >= 2.0.0\"",
-      "\trequires \"zippy >= 0.10.4\"\t# tabbed comment",
-      "\trequires \"yaml >= 2.1.0\""
+      "\trequires \"nim >= 2.0.0\"", "\trequires \"zippy >= 0.10.4\"\t# tabbed comment",
+      "\trequires \"yaml >= 2.1.0\"",
     ].join("\n")
 
     let expected = [
-      "\trequires \"nim >= 2.0.0\"",
-      "\trequires \"zippy >= 0.11.0\"\t# tabbed comment",
-      "\trequires \"yaml >= 2.1.0\""
+      "\trequires \"nim >= 2.0.0\"", "\trequires \"zippy >= 0.11.0\"\t# tabbed comment",
+      "\trequires \"yaml >= 2.1.0\"",
     ].join("\n")
 
     let actual = rewriteNimbleFile(original, "zippy", ">= 0.11.0")
@@ -168,17 +154,13 @@ suite "Adversarial Testing Suite & Negative Controls":
   test "Negative Control: Package name substring collision immunity":
     # zippy must not match zip, zippy_utils, or libzip
     let original = [
-      "requires \"zip >= 1.0.0\"",
-      "requires \"zippy >= 0.10.4\"",
-      "requires \"zippy_utils >= 2.0.0\"",
-      "requires \"libzip >= 3.0.0\""
+      "requires \"zip >= 1.0.0\"", "requires \"zippy >= 0.10.4\"",
+      "requires \"zippy_utils >= 2.0.0\"", "requires \"libzip >= 3.0.0\"",
     ].join("\n")
 
     let expectedZippyUpdate = [
-      "requires \"zip >= 1.0.0\"",
-      "requires \"zippy >= 0.11.0\"",
-      "requires \"zippy_utils >= 2.0.0\"",
-      "requires \"libzip >= 3.0.0\""
+      "requires \"zip >= 1.0.0\"", "requires \"zippy >= 0.11.0\"",
+      "requires \"zippy_utils >= 2.0.0\"", "requires \"libzip >= 3.0.0\"",
     ].join("\n")
 
     let actualZippy = rewriteNimbleFile(original, "zippy", ">= 0.11.0")
@@ -186,10 +168,8 @@ suite "Adversarial Testing Suite & Negative Controls":
 
     # Rewriting 'zip' must not affect 'zippy', 'zippy_utils', or 'libzip'
     let expectedZipUpdate = [
-      "requires \"zip >= 1.2.0\"",
-      "requires \"zippy >= 0.10.4\"",
-      "requires \"zippy_utils >= 2.0.0\"",
-      "requires \"libzip >= 3.0.0\""
+      "requires \"zip >= 1.2.0\"", "requires \"zippy >= 0.10.4\"",
+      "requires \"zippy_utils >= 2.0.0\"", "requires \"libzip >= 3.0.0\"",
     ].join("\n")
 
     let actualZip = rewriteNimbleFile(original, "zip", ">= 1.2.0")
@@ -207,31 +187,21 @@ suite "Adversarial Testing Suite & Negative Controls":
 
   test "Negative Control: Task blocks with nested quotes, CLI flags, and echo statements":
     let original = [
-      "version = \"0.1.0\"",
-      "author  = \"Axiomantic\"",
-      "",
-      "requires \"zippy >= 0.10.4\"",
-      "",
+      "version = \"0.1.0\"", "author  = \"Axiomantic\"", "",
+      "requires \"zippy >= 0.10.4\"", "",
       "task test, \"Run tests with nested options\":",
       "  exec \"nim c -r --define:pkg=\\\"zippy\\\" tests/test_all.nim\"",
-      "  echo \"Task completed: requires zippy >= 0.10.4\"",
-      "",
-      "task deploy, \"Production deploy\":",
-      "  exec \"echo deploying\""
+      "  echo \"Task completed: requires zippy >= 0.10.4\"", "",
+      "task deploy, \"Production deploy\":", "  exec \"echo deploying\"",
     ].join("\n")
 
     let expected = [
-      "version = \"0.1.0\"",
-      "author  = \"Axiomantic\"",
-      "",
-      "requires \"zippy >= 0.11.0\"",
-      "",
+      "version = \"0.1.0\"", "author  = \"Axiomantic\"", "",
+      "requires \"zippy >= 0.11.0\"", "",
       "task test, \"Run tests with nested options\":",
       "  exec \"nim c -r --define:pkg=\\\"zippy\\\" tests/test_all.nim\"",
-      "  echo \"Task completed: requires zippy >= 0.10.4\"",
-      "",
-      "task deploy, \"Production deploy\":",
-      "  exec \"echo deploying\""
+      "  echo \"Task completed: requires zippy >= 0.10.4\"", "",
+      "task deploy, \"Production deploy\":", "  exec \"echo deploying\"",
     ].join("\n")
 
     let actual = rewriteNimbleFile(original, "zippy", ">= 0.11.0")
@@ -245,25 +215,17 @@ suite "Adversarial Testing Suite & Negative Controls":
 
   test "Negative Control: Multiline triple-quoted docstrings inside task blocks":
     let original = [
-      "requires \"zippy >= 0.10.4\"",
-      "",
-      "task docgen, \"\"\"",
-      "Documentation generator task.",
-      "Usage:",
-      "  requires \"zippy >= 0.10.4\" in user docs",
-      "\"\"\":",
-      "  exec \"nim doc src/renimble.nim\""
+      "requires \"zippy >= 0.10.4\"", "", "task docgen, \"\"\"",
+      "Documentation generator task.", "Usage:",
+      "  requires \"zippy >= 0.10.4\" in user docs", "\"\"\":",
+      "  exec \"nim doc src/renimble.nim\"",
     ].join("\n")
 
     let expected = [
-      "requires \"zippy >= 0.11.0\"",
-      "",
-      "task docgen, \"\"\"",
-      "Documentation generator task.",
-      "Usage:",
-      "  requires \"zippy >= 0.10.4\" in user docs",
-      "\"\"\":",
-      "  exec \"nim doc src/renimble.nim\""
+      "requires \"zippy >= 0.11.0\"", "", "task docgen, \"\"\"",
+      "Documentation generator task.", "Usage:",
+      "  requires \"zippy >= 0.10.4\" in user docs", "\"\"\":",
+      "  exec \"nim doc src/renimble.nim\"",
     ].join("\n")
 
     let actual = rewriteNimbleFile(original, "zippy", ">= 0.11.0")
@@ -275,21 +237,15 @@ suite "Adversarial Testing Suite & Negative Controls":
 
   test "Negative Control: Identifiers and task names with 'requires' prefix":
     let original = [
-      "requires_helper = \"zippy\"",
-      "requires \"zippy >= 0.10.4\"",
-      "",
+      "requires_helper = \"zippy\"", "requires \"zippy >= 0.10.4\"", "",
       "task requires_audit, \"Audit all requirements\":",
-      "  let requires_file = \"nimble.lock\"",
-      "  echo requires_file"
+      "  let requires_file = \"nimble.lock\"", "  echo requires_file",
     ].join("\n")
 
     let expected = [
-      "requires_helper = \"zippy\"",
-      "requires \"zippy >= 0.11.0\"",
-      "",
+      "requires_helper = \"zippy\"", "requires \"zippy >= 0.11.0\"", "",
       "task requires_audit, \"Audit all requirements\":",
-      "  let requires_file = \"nimble.lock\"",
-      "  echo requires_file"
+      "  let requires_file = \"nimble.lock\"", "  echo requires_file",
     ].join("\n")
 
     let actual = rewriteNimbleFile(original, "zippy", ">= 0.11.0")
@@ -300,15 +256,11 @@ suite "Adversarial Testing Suite & Negative Controls":
     check manifest.dependencies[0].name == "zippy"
 
   test "Negative Control: Commented-out requires lines must remain untouched":
-    let original = [
-      "# requires \"zippy >= 0.9.0\"",
-      "requires \"zippy >= 0.10.4\""
-    ].join("\n")
+    let original =
+      ["# requires \"zippy >= 0.9.0\"", "requires \"zippy >= 0.10.4\""].join("\n")
 
-    let expected = [
-      "# requires \"zippy >= 0.9.0\"",
-      "requires \"zippy >= 0.11.0\""
-    ].join("\n")
+    let expected =
+      ["# requires \"zippy >= 0.9.0\"", "requires \"zippy >= 0.11.0\""].join("\n")
 
     let actual = rewriteNimbleFile(original, "zippy", ">= 0.11.0")
     check actual == expected
@@ -362,11 +314,9 @@ suite "Adversarial Testing Suite & Negative Controls":
 
   test "Dangling dependencies detection between manifest and lockfile":
     let manifestContent = [
-      "version = \"1.0.0\"",
-      "requires \"nim >= 2.0.0\"",
-      "requires \"zippy >= 0.10.4\"",
-      "requires \"yaml >= 2.1.0\"",
-      "requires \"chronos >= 4.0.0\""
+      "version = \"1.0.0\"", "requires \"nim >= 2.0.0\"",
+      "requires \"zippy >= 0.10.4\"", "requires \"yaml >= 2.1.0\"",
+      "requires \"chronos >= 4.0.0\"",
     ].join("\n")
 
     let manifest = parseNimbleManifest(manifestContent)
@@ -390,10 +340,8 @@ suite "Adversarial Testing Suite & Negative Controls":
     check dangling == @["yaml", "chronos"]
 
   test "Comprehensive lockfile integrity verification":
-    let manifestContent = [
-      "requires \"zippy >= 0.10.4\"",
-      "requires \"yaml >= 2.1.0\""
-    ].join("\n")
+    let manifestContent =
+      ["requires \"zippy >= 0.10.4\"", "requires \"yaml >= 2.1.0\""].join("\n")
     let manifest = parseNimbleManifest(manifestContent)
 
     # Lockfile with:
@@ -443,11 +391,13 @@ suite "Adversarial Testing Suite & Negative Controls":
     let issues = validateLockIntegrity(manifest, lock)
 
     check issues.len == 6
-    check issues[0] == "Dangling dependency: manifest requires 'yaml', but it is missing from lockfile"
+    check issues[0] ==
+      "Dangling dependency: manifest requires 'yaml', but it is missing from lockfile"
     check issues[1] == "Malformed lockfile entry: package 'badPkg' has empty version"
     check issues[2] == "Malformed lockfile entry: package 'badPkg' has empty vcsRevision"
     check issues[3] == "Malformed lockfile entry: package 'badPkg' has empty url"
-    check issues[4] == "Dangling transitive dependency: package 'transPkg' requires 'missingTransDep', but it is missing from lockfile"
+    check issues[4] ==
+      "Dangling transitive dependency: package 'transPkg' requires 'missingTransDep', but it is missing from lockfile"
     check issues[5] == "Circular dependency detected: cycleA -> cycleB -> cycleA"
 
   # ---------------------------------------------------------------------------
@@ -460,7 +410,7 @@ suite "Adversarial Testing Suite & Negative Controls":
       "2222222222222222222222222222222222222222\trefs/tags/nightly",
       "3333333333333333333333333333333333333333\trefs/tags/devel",
       "4444444444444444444444444444444444444444\trefs/tags/release_candidate_1",
-      "5555555555555555555555555555555555555555\trefs/tags/2.1.0"
+      "5555555555555555555555555555555555555555\trefs/tags/2.1.0",
     ].join("\n")
 
     # Must NOT raise ValueError on 'nightly' or 'devel'
@@ -473,9 +423,13 @@ suite "Adversarial Testing Suite & Negative Controls":
 
   test "Negative Control: getLatestRelease prefers stable over prerelease by default":
     let tags = @[
-      UpstreamTag(name: "v3.0.0-alpha.1", semver: parseSemVersion("3.0.0-alpha.1"), commitSha: "3333"),
+      UpstreamTag(
+        name: "v3.0.0-alpha.1",
+        semver: parseSemVersion("3.0.0-alpha.1"),
+        commitSha: "3333",
+      ),
       UpstreamTag(name: "v2.5.0", semver: parseSemVersion("2.5.0"), commitSha: "2222"),
-      UpstreamTag(name: "v2.4.0", semver: parseSemVersion("2.4.0"), commitSha: "1111")
+      UpstreamTag(name: "v2.4.0", semver: parseSemVersion("2.4.0"), commitSha: "1111"),
     ]
     let stableConstraint = parseVersionConstraint(">= 2.0.0")
     let latestStable = getLatestRelease(tags, stableConstraint)

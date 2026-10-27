@@ -40,7 +40,8 @@ proc serializeLockFile*(lock: LockFile): string =
     pNode["version"] = newJString(pkg.version)
     pNode["vcsRevision"] = newJString(pkg.vcsRevision)
     pNode["url"] = newJString(pkg.url)
-    pNode["downloadMethod"] = newJString(if pkg.downloadMethod.len > 0: pkg.downloadMethod else: "git")
+    pNode["downloadMethod"] =
+      newJString(if pkg.downloadMethod.len > 0: pkg.downloadMethod else: "git")
     if pkg.dependencies.len > 0:
       var depsArr = newJArray()
       for dep in pkg.dependencies:
@@ -51,7 +52,9 @@ proc serializeLockFile*(lock: LockFile): string =
   root["packages"] = pkgs
   result = pretty(root, 2) & "\n"
 
-proc updateLockPackage*(lock: var LockFile, pkgName: string, newVersion: string, newSha: string) =
+proc updateLockPackage*(
+    lock: var LockFile, pkgName: string, newVersion: string, newSha: string
+) =
   if lock.packages.hasKey(pkgName):
     var pkg = lock.packages[pkgName]
     pkg.version = newVersion
@@ -60,10 +63,7 @@ proc updateLockPackage*(lock: var LockFile, pkgName: string, newVersion: string,
     lock.packages[pkgName] = pkg
   else:
     lock.packages[pkgName] = LockPackage(
-      version: newVersion,
-      vcsRevision: newSha,
-      downloadMethod: "git",
-      dependencies: @[]
+      version: newVersion, vcsRevision: newSha, downloadMethod: "git", dependencies: @[]
     )
 
 proc findDanglingDependencies*(manifest: NimbleManifest, lock: LockFile): seq[string] =
@@ -76,7 +76,9 @@ proc findDanglingDependencies*(manifest: NimbleManifest, lock: LockFile): seq[st
     if not lock.packages.hasKey(dep.name) and not lock.packages.hasKey(clean):
       result.add(dep.name)
 
-proc detectCircularDependencies*(depGraph: Table[string, seq[string]]): seq[seq[string]] =
+proc detectCircularDependencies*(
+    depGraph: Table[string, seq[string]]
+): seq[seq[string]] =
   ## Identifies circular dependency cycles in a directed package dependency graph.
   ## Returns each cycle as a sequence of package names, e.g., @["A", "B", "A"].
   var cycles: seq[seq[string]] = @[]
@@ -96,7 +98,7 @@ proc detectCircularDependencies*(depGraph: Table[string, seq[string]]): seq[seq[
           # Cycle found from v to u back to v
           let idx = stack.find(v)
           if idx != -1:
-            let cycle = stack[idx..^1] & @[v]
+            let cycle = stack[idx ..^ 1] & @[v]
             # Normalize cycle key for deduplication
             let cycleKey = cycle.join("->")
             if cycleKey notin seenCycleKeys:
@@ -127,7 +129,10 @@ proc validateLockIntegrity*(manifest: NimbleManifest, lock: LockFile): seq[strin
   # 1. Manifest-to-lockfile dangling dependencies
   let dangling = findDanglingDependencies(manifest, lock)
   for dep in dangling:
-    result.add("Dangling dependency: manifest requires '" & dep & "', but it is missing from lockfile")
+    result.add(
+      "Dangling dependency: manifest requires '" & dep &
+        "', but it is missing from lockfile"
+    )
 
   # 2. Package entry completeness & transitive dangling references
   var sortedPkgNames: seq[string] = @[]
@@ -140,12 +145,17 @@ proc validateLockIntegrity*(manifest: NimbleManifest, lock: LockFile): seq[strin
     if pkg.version.len == 0:
       result.add("Malformed lockfile entry: package '" & name & "' has empty version")
     if pkg.vcsRevision.len == 0:
-      result.add("Malformed lockfile entry: package '" & name & "' has empty vcsRevision")
+      result.add(
+        "Malformed lockfile entry: package '" & name & "' has empty vcsRevision"
+      )
     if pkg.url.len == 0:
       result.add("Malformed lockfile entry: package '" & name & "' has empty url")
     for transDep in pkg.dependencies:
       if transDep.toLowerAscii() != "nim" and not lock.packages.hasKey(transDep):
-        result.add("Dangling transitive dependency: package '" & name & "' requires '" & transDep & "', but it is missing from lockfile")
+        result.add(
+          "Dangling transitive dependency: package '" & name & "' requires '" & transDep &
+            "', but it is missing from lockfile"
+        )
 
   # 3. Circular dependencies in lockfile dependency graph
   var graph = initTable[string, seq[string]]()
@@ -154,4 +164,3 @@ proc validateLockIntegrity*(manifest: NimbleManifest, lock: LockFile): seq[strin
   let cycles = detectCircularDependencies(graph)
   for c in cycles:
     result.add("Circular dependency detected: " & c.join(" -> "))
-

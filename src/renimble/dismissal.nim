@@ -8,11 +8,11 @@ proc extractMetadataFromPrBody*(body: string): seq[string] =
   let startIdx = body.find(MetadataStartTag)
   if startIdx == -1:
     return
-  let afterStart = body[(startIdx + MetadataStartTag.len)..^1]
+  let afterStart = body[(startIdx + MetadataStartTag.len) ..^ 1]
   let endIdx = afterStart.find(MetadataEndTag)
   if endIdx == -1:
     return
-  let jsonStr = afterStart[0..<endIdx].strip()
+  let jsonStr = afterStart[0 ..< endIdx].strip()
   try:
     let j = parseJson(jsonStr)
     if j.kind == JObject and j.hasKey("proposals") and j["proposals"].kind == JArray:
@@ -99,7 +99,9 @@ proc fetchClosedPrDismissals*(cacheDirOverride: string = ""): seq[string] =
       if b notin result:
         result.add(b)
 
-proc isVersionDismissed*(pkgName: string, targetVersion: string, dismissals: seq[string]): bool =
+proc isVersionDismissed*(
+    pkgName: string, targetVersion: string, dismissals: seq[string]
+): bool =
   ## Returns true if a PR for this exact version was closed without merging.
   let targetBranch = "renimble/" & pkgName & "-" & targetVersion
   let targetTag = pkgName & ":" & targetVersion

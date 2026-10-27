@@ -7,7 +7,7 @@ proc parseSemVersion*(s: string): SemVersion =
     raise newException(ValueError, "Empty version string")
 
   if clean.startsWith("v") or clean.startsWith("V"):
-    clean = clean[1..^1]
+    clean = clean[1 ..^ 1]
 
   if clean.len == 0:
     raise newException(ValueError, "Invalid SemVer: version missing after 'v' prefix")
@@ -16,42 +16,47 @@ proc parseSemVersion*(s: string): SemVersion =
   var buildMeta = ""
   let plusIdx = clean.find('+')
   if plusIdx != -1:
-    buildMeta = clean[(plusIdx + 1)..^1]
-    clean = clean[0..<plusIdx]
+    buildMeta = clean[(plusIdx + 1) ..^ 1]
+    clean = clean[0 ..< plusIdx]
 
   # Split prerelease (-)
   var preRelease = ""
   let dashIdx = clean.find('-')
   if dashIdx != -1:
-    preRelease = clean[(dashIdx + 1)..^1]
-    clean = clean[0..<dashIdx]
+    preRelease = clean[(dashIdx + 1) ..^ 1]
+    clean = clean[0 ..< dashIdx]
 
   let parts = clean.split('.')
   if parts.len < 1 or parts.len > 3:
-    raise newException(ValueError, "Invalid SemVer format (must have 1-3 dot-separated numeric parts): " & s)
+    raise newException(
+      ValueError,
+      "Invalid SemVer format (must have 1-3 dot-separated numeric parts): " & s,
+    )
 
   var maj, min, pat = 0
   if parts.len >= 1:
     if parts[0].len == 0 or not parts[0].allCharsInSet(Digits):
-      raise newException(ValueError, "Invalid major version segment in '" & s & "': " & parts[0])
+      raise newException(
+        ValueError, "Invalid major version segment in '" & s & "': " & parts[0]
+      )
     maj = strutils.parseInt(parts[0])
 
   if parts.len >= 2:
     if parts[1].len == 0 or not parts[1].allCharsInSet(Digits):
-      raise newException(ValueError, "Invalid minor version segment in '" & s & "': " & parts[1])
+      raise newException(
+        ValueError, "Invalid minor version segment in '" & s & "': " & parts[1]
+      )
     min = strutils.parseInt(parts[1])
 
   if parts.len >= 3:
     if parts[2].len == 0 or not parts[2].allCharsInSet(Digits):
-      raise newException(ValueError, "Invalid patch version segment in '" & s & "': " & parts[2])
+      raise newException(
+        ValueError, "Invalid patch version segment in '" & s & "': " & parts[2]
+      )
     pat = strutils.parseInt(parts[2])
 
   result = SemVersion(
-    major: maj,
-    minor: min,
-    patch: pat,
-    prerelease: preRelease,
-    build: buildMeta
+    major: maj, minor: min, patch: pat, prerelease: preRelease, build: buildMeta
   )
 
 proc `$`*(v: SemVersion): string =
@@ -71,7 +76,7 @@ proc cmpPrerelease*(a, b: string): int =
   let bParts = b.split('.')
   let minLen = min(aParts.len, bParts.len)
 
-  for i in 0..<minLen:
+  for i in 0 ..< minLen:
     let ap = aParts[i]
     let bp = bParts[i]
     if ap != bp:
@@ -111,9 +116,14 @@ proc cmp*(a, b: SemVersion): int =
 
   return 0
 
-proc `<`*(a, b: SemVersion): bool {.inline.} = cmp(a, b) < 0
-proc `<=`*(a, b: SemVersion): bool {.inline.} = cmp(a, b) <= 0
-proc `==`*(a, b: SemVersion): bool {.inline.} = cmp(a, b) == 0
+proc `<`*(a, b: SemVersion): bool {.inline.} =
+  cmp(a, b) < 0
+
+proc `<=`*(a, b: SemVersion): bool {.inline.} =
+  cmp(a, b) <= 0
+
+proc `==`*(a, b: SemVersion): bool {.inline.} =
+  cmp(a, b) == 0
 
 proc parseSingleConstraint*(token: string): SingleConstraint =
   var clean = token.strip()
@@ -125,44 +135,46 @@ proc parseSingleConstraint*(token: string): SingleConstraint =
 
   if clean.startsWith(">="):
     op = voGe
-    clean = clean[2..^1].strip()
+    clean = clean[2 ..^ 1].strip()
     opFound = true
   elif clean.startsWith("<="):
     op = voLe
-    clean = clean[2..^1].strip()
+    clean = clean[2 ..^ 1].strip()
     opFound = true
   elif clean.startsWith("=="):
     op = voEq
-    clean = clean[2..^1].strip()
+    clean = clean[2 ..^ 1].strip()
     opFound = true
   elif clean.startsWith("!="):
     op = voNe
-    clean = clean[2..^1].strip()
+    clean = clean[2 ..^ 1].strip()
     opFound = true
   elif clean.startsWith("^="):
     op = voCaret
-    clean = clean[2..^1].strip()
+    clean = clean[2 ..^ 1].strip()
     opFound = true
   elif clean.startsWith("~="):
     op = voTilde
-    clean = clean[2..^1].strip()
+    clean = clean[2 ..^ 1].strip()
     opFound = true
   elif clean.startsWith(">"):
     op = voGt
-    clean = clean[1..^1].strip()
+    clean = clean[1 ..^ 1].strip()
     opFound = true
   elif clean.startsWith("<"):
     op = voLt
-    clean = clean[1..^1].strip()
+    clean = clean[1 ..^ 1].strip()
     opFound = true
   elif clean.startsWith("="):
     op = voEq
-    clean = clean[1..^1].strip()
+    clean = clean[1 ..^ 1].strip()
     opFound = true
 
   # Reject invalid operator symbols or consecutive operator punctuation
   if clean.len > 0 and clean[0] in {'!', '=', '<', '>', '^', '~', '?', '@', '$', '%'}:
-    raise newException(ValueError, "Invalid or consecutive constraint operator in: " & token)
+    raise newException(
+      ValueError, "Invalid or consecutive constraint operator in: " & token
+    )
 
   if clean.len == 0:
     raise newException(ValueError, "Constraint missing version operand: " & token)
@@ -171,7 +183,7 @@ proc parseSingleConstraint*(token: string): SingleConstraint =
   if clean.startsWith("#head") or clean == "#head":
     spec = VersionSpec(kind: vkHead, vcsRef: "head")
   elif clean.startsWith("#"):
-    let refName = clean[1..^1]
+    let refName = clean[1 ..^ 1]
     if refName.len == 40 and refName.allCharsInSet(HexDigits):
       spec = VersionSpec(kind: vkCommit, vcsRef: refName)
     else:
@@ -193,10 +205,7 @@ proc parseVersionConstraint*(raw: string): VersionConstraint =
     if p.len > 0:
       constraints.add(parseSingleConstraint(p))
 
-  result = VersionConstraint(
-    isAny: constraints.len == 0,
-    constraints: constraints
-  )
+  result = VersionConstraint(isAny: constraints.len == 0, constraints: constraints)
 
 proc satisfiesSingle*(v: SemVersion, c: SingleConstraint): bool =
   if c.spec.kind != vkSemVer:
@@ -255,7 +264,8 @@ proc updateConstraintString*(rawConstraint: string, targetVersion: SemVersion): 
 
   var parts: seq[string] = @[]
   for c in parsed.constraints:
-    let opStr = case c.op
+    let opStr =
+      case c.op
       of voNone: ""
       of voEq: "== "
       of voNe: "!= "
@@ -274,7 +284,10 @@ proc updateConstraintString*(rawConstraint: string, targetVersion: SemVersion): 
         # If bumping past an upper bound, widen upper bound to next major or patch
         parts.add(opStr & $targetVersion)
       else:
-        parts.add(opStr & (if c.spec.kind == vkSemVer: $c.spec.semver else: c.spec.vcsRef))
+        parts.add(
+          opStr & (if c.spec.kind == vkSemVer: $c.spec.semver
+          else: c.spec.vcsRef)
+        )
 
   result = parts.join(" & ")
 

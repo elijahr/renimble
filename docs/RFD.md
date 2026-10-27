@@ -1,9 +1,9 @@
 # RFD 001: Architectural Invariants, Rewriting Mechanics, and Constraint Resolution for Renimble
 
-**Author**: Kraken-Strand (`@renimble-architect`), Staff Systems Architect  
-**Status**: Ratified / Accepted  
-**Created**: 2026-10-21  
-**Target Subsystems**: `rewriter.nim`, `version.nim`, `lockfile.nim`, `registry.nim`, `upstream.nim`, `engine.nim`  
+**Author**: Kraken-Strand (`@renimble-architect`), Staff Systems Architect
+**Status**: Ratified / Accepted
+**Created**: 2026-10-21
+**Target Subsystems**: `rewriter.nim`, `version.nim`, `lockfile.nim`, `registry.nim`, `upstream.nim`, `engine.nim`
 **Related Specifications**: [SPEC.md](SPEC.md)
 
 ---
@@ -35,20 +35,20 @@ flowchart TD
     Raw[Raw .nimble Source Buffer] --> Lexer[Token / Span Lexer]
     Lexer --> Tokens["Token Stream (Type, RawSpan, Value, Trivia)"]
     Tokens --> Filter["Statement Classifier: requires vs other"]
-    
+
     subgraph NonTarget["Non-Target Content (Byte-for-Byte Intact)"]
         Tasks["task blocks"]
         Comments["# comments & docstrings"]
         Cond["when defined(...) blocks"]
         UntouchedDeps["Unmodified dependencies"]
     end
-    
+
     subgraph Target["Targeted Token Mutation"]
         TargetDep["Target Dependency String Token"]
         TargetDep --> SubSpan["Locate Exact Version Constraint Span"]
         SubSpan --> SliceReplace["In-Place Slice Substitution"]
     end
-    
+
     Filter -->|Non-matching| NonTarget
     Filter -->|Target matching| Target
     SliceReplace --> Assembler["Source Buffer Reconstruction"]
@@ -144,7 +144,7 @@ graph TD
     Root -->|requires "B >= 2.0.0"| NodeB["Package B"]
     NodeA -->|requires "C >= 1.5.0 & < 3.0.0"| NodeC["Package C"]
     NodeB -->|requires "C < 2.0.0"| NodeC
-    
+
     subgraph Solution["SAT Intersection: D(C)"]
         Intersect["C in [1.5.0, 2.0.0)"]
     end
@@ -204,7 +204,7 @@ sequenceDiagram
     participant Runner as Renimble Runner
     participant Cache as Local Registry Cache (~/.cache/renimble/)
     participant RegServer as GitHub Raw (packages.json)
-    
+
     Runner->>Cache: Check cache validity (TTL: 1h)
     alt Cache Fresh (age < TTL)
         Cache-->>Runner: Return cached packages.json
@@ -233,17 +233,17 @@ When querying upstream repositories for versions, tags, and commit SHAs, `renimb
 ```mermaid
 flowchart TD
     Req[Version / Tag Probe Request] --> AuthCheck{GitHub Token Present?}
-    
+
     AuthCheck -->|Yes| GH_API[GitHub REST API /repos/:owner/:repo/tags]
     AuthCheck -->|No| RateBudget{Remaining Quota > 10?}
-    
+
     RateBudget -->|Yes| GH_Anon[GitHub Anonymous API]
     RateBudget -->|No / Exhausted| GitFallback[Git CLI: git ls-remote --tags repo_url]
-    
+
     GH_API -->|Rate Limit 403/429| Backoff[Exponential Backoff + Jitter]
     Backoff -->|Retry limit exceeded| GitFallback
     GH_Anon -->|Rate Limit 403/429| GitFallback
-    
+
     GitFallback --> Parser[Git Ref / Tag Parser]
     GH_API -->|200 OK| TagParser[JSON Tag Parser]
     TagParser --> Resolved[Resolved Tags & SHAs]
@@ -297,7 +297,7 @@ sequenceDiagram
     CLI->>Config: parseSimpleYamlConfig()
     CLI->>Parser: parseNimbleManifest(content)
     Parser-->>CLI: NimbleManifest (dependencies, metadata)
-    
+
     loop For each Dependency
         CLI->>Reg: lookupPackage(dep.name)
         Reg-->>CLI: RegistryPackage (repo url, downloadMethod)

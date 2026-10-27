@@ -68,9 +68,12 @@ proc parseAtlasLock*(content: string, filePath: string = "atlas.lock"): AtlasLoc
       for pkgName, pkgNode in j.pairs:
         if pkgNode.kind == JObject:
           var lp = AtlasLockPackage()
-          if pkgNode.hasKey("url"): lp.url = pkgNode["url"].getStr()
-          if pkgNode.hasKey("commit"): lp.commit = pkgNode["commit"].getStr()
-          if pkgNode.hasKey("version"): lp.version = pkgNode["version"].getStr()
+          if pkgNode.hasKey("url"):
+            lp.url = pkgNode["url"].getStr()
+          if pkgNode.hasKey("commit"):
+            lp.commit = pkgNode["commit"].getStr()
+          if pkgNode.hasKey("version"):
+            lp.version = pkgNode["version"].getStr()
           result.packages[pkgName] = lp
       return
   except CatchableError:
@@ -86,7 +89,11 @@ proc parseAtlasLock*(content: string, filePath: string = "atlas.lock"): AtlasLoc
     if parts.len >= 2:
       let name = parts[0]
       let commit = parts[^1]
-      let url = if parts.len >= 3: parts[1] else: ""
+      let url =
+        if parts.len >= 3:
+          parts[1]
+        else:
+          ""
       result.packages[name] = AtlasLockPackage(url: url, commit: commit, version: "")
 
 proc loadAtlasLock*(path: string = "atlas.lock"): Option[AtlasLock] =
@@ -106,12 +113,21 @@ proc serializeAtlasLock*(lock: AtlasLock): string =
     j[name] = pNode
   return pretty(j, indent = 2) & "\n"
 
-proc updateAtlasLock*(lock: var AtlasLock, pkgName: string, commit: string, version: string = "", url: string = "") =
+proc updateAtlasLock*(
+    lock: var AtlasLock,
+    pkgName: string,
+    commit: string,
+    version: string = "",
+    url: string = "",
+) =
   if lock.packages.hasKey(pkgName):
     var p = lock.packages[pkgName]
     p.commit = commit
-    if version.len > 0: p.version = version
-    if url.len > 0: p.url = url
+    if version.len > 0:
+      p.version = version
+    if url.len > 0:
+      p.url = url
     lock.packages[pkgName] = p
   else:
-    lock.packages[pkgName] = AtlasLockPackage(url: url, commit: commit, version: version)
+    lock.packages[pkgName] =
+      AtlasLockPackage(url: url, commit: commit, version: version)

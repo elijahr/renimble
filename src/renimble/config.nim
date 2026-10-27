@@ -7,22 +7,16 @@ proc defaultTargetConfig*(): UpdateTargetConfig =
     directory: "/",
     targetBranch: "main",
     schedule: ScheduleConfig(
-      interval: siWeekly,
-      day: "monday",
-      time: "06:00",
-      timezone: "Etc/UTC"
+      interval: siWeekly, day: "monday", time: "06:00", timezone: "Etc/UTC"
     ),
     groups: initTable[string, GroupConfig](),
     ignore: @[],
-    commitMessage: CommitMessageConfig(
-      prefix: "chore(deps)",
-      includeScope: true
-    ),
+    commitMessage: CommitMessageConfig(prefix: "chore(deps)", includeScope: true),
     labels: @["dependencies", "nim"],
     reviewers: @[],
     assignees: @[],
     openPullRequestsLimit: 10,
-    updateCompilerRequirement: false
+    updateCompilerRequirement: false,
   )
 
 proc parseSimpleYamlConfig*(content: string): RenimbleConfig =
@@ -42,14 +36,15 @@ proc parseSimpleYamlConfig*(content: string): RenimbleConfig =
     let indent = rawLine.len - rawLine.strip(leading = true, trailing = false).len
 
     if trimmed.startsWith("version:"):
-      let val = trimmed[8..^1].strip()
+      let val = trimmed[8 ..^ 1].strip()
       try:
         result.version = parseInt(val)
       except CatchableError:
         result.version = 1
       continue
 
-    if trimmed.startsWith("- package-ecosystem:") or (trimmed.startsWith("package-ecosystem:") and indent <= 4):
+    if trimmed.startsWith("- package-ecosystem:") or
+        (trimmed.startsWith("package-ecosystem:") and indent <= 4):
       if hasTarget:
         result.updates.add(currentTarget)
       currentTarget = defaultTargetConfig()
@@ -60,9 +55,9 @@ proc parseSimpleYamlConfig*(content: string): RenimbleConfig =
       continue
 
     if trimmed.startsWith("directory:"):
-      currentTarget.directory = trimmed[10..^1].strip().strip(chars = {'"', '\''})
+      currentTarget.directory = trimmed[10 ..^ 1].strip().strip(chars = {'"', '\''})
     elif trimmed.startsWith("target-branch:"):
-      currentTarget.targetBranch = trimmed[14..^1].strip().strip(chars = {'"', '\''})
+      currentTarget.targetBranch = trimmed[14 ..^ 1].strip().strip(chars = {'"', '\''})
     elif trimmed.startsWith("schedule:"):
       currentSection = "schedule"
     elif trimmed.startsWith("groups:"):
@@ -83,15 +78,15 @@ proc parseSimpleYamlConfig*(content: string): RenimbleConfig =
       currentTarget.assignees = @[]
     elif trimmed.startsWith("open-pull-requests-limit:"):
       try:
-        currentTarget.openPullRequestsLimit = parseInt(trimmed[25..^1].strip())
+        currentTarget.openPullRequestsLimit = parseInt(trimmed[25 ..^ 1].strip())
       except CatchableError:
         discard
     elif trimmed.startsWith("update-compiler-requirement:"):
-      let v = trimmed[27..^1].strip().toLowerAscii()
+      let v = trimmed[27 ..^ 1].strip().toLowerAscii()
       currentTarget.updateCompilerRequirement = (v == "true" or v == "yes")
     elif currentSection == "schedule":
       if trimmed.startsWith("interval:"):
-        let iv = trimmed[9..^1].strip().toLowerAscii()
+        let iv = trimmed[9 ..^ 1].strip().toLowerAscii()
         if iv == "daily":
           currentTarget.schedule.interval = siDaily
         elif iv == "monthly":
@@ -99,38 +94,41 @@ proc parseSimpleYamlConfig*(content: string): RenimbleConfig =
         else:
           currentTarget.schedule.interval = siWeekly
       elif trimmed.startsWith("day:"):
-        currentTarget.schedule.day = trimmed[4..^1].strip()
+        currentTarget.schedule.day = trimmed[4 ..^ 1].strip()
       elif trimmed.startsWith("time:"):
-        currentTarget.schedule.time = trimmed[5..^1].strip()
+        currentTarget.schedule.time = trimmed[5 ..^ 1].strip()
       elif trimmed.startsWith("timezone:"):
-        currentTarget.schedule.timezone = trimmed[9..^1].strip()
+        currentTarget.schedule.timezone = trimmed[9 ..^ 1].strip()
     elif currentSection == "commit-message":
       if trimmed.startsWith("prefix:"):
-        currentTarget.commitMessage.prefix = trimmed[7..^1].strip().strip(chars = {'"', '\''})
+        currentTarget.commitMessage.prefix =
+          trimmed[7 ..^ 1].strip().strip(chars = {'"', '\''})
       elif trimmed.startsWith("include:"):
-        currentTarget.commitMessage.includeScope = (trimmed[8..^1].strip() == "scope")
+        currentTarget.commitMessage.includeScope = (trimmed[8 ..^ 1].strip() == "scope")
     elif currentSection == "labels":
       if trimmed.startsWith("-"):
-        let lbl = trimmed[1..^1].strip().strip(chars = {'"', '\''})
+        let lbl = trimmed[1 ..^ 1].strip().strip(chars = {'"', '\''})
         currentTarget.labels.add(lbl)
     elif currentSection == "reviewers":
       if trimmed.startsWith("-"):
-        currentTarget.reviewers.add(trimmed[1..^1].strip().strip(chars = {'"', '\''}))
+        currentTarget.reviewers.add(trimmed[1 ..^ 1].strip().strip(chars = {'"', '\''}))
     elif currentSection == "assignees":
       if trimmed.startsWith("-"):
-        currentTarget.assignees.add(trimmed[1..^1].strip().strip(chars = {'"', '\''}))
+        currentTarget.assignees.add(trimmed[1 ..^ 1].strip().strip(chars = {'"', '\''}))
     elif currentSection == "groups":
       if indent == 6 or (indent == 4 and trimmed.endsWith(":")):
-        currentGroupName = trimmed[0..^2].strip()
-        currentTarget.groups[currentGroupName] = GroupConfig(patterns: @[], updateTypes: @[])
+        currentGroupName = trimmed[0 ..^ 2].strip()
+        currentTarget.groups[currentGroupName] =
+          GroupConfig(patterns: @[], updateTypes: @[])
       elif currentGroupName.len > 0:
         if trimmed.startsWith("-"):
-          let pat = trimmed[1..^1].strip().strip(chars = {'"', '\''})
+          let pat = trimmed[1 ..^ 1].strip().strip(chars = {'"', '\''})
           var grp = currentTarget.groups[currentGroupName]
           grp.patterns.add(pat)
           currentTarget.groups[currentGroupName] = grp
     elif currentSection == "ignore":
-      if trimmed.startsWith("dependency-name:") or trimmed.startsWith("- dependency-name:"):
+      if trimmed.startsWith("dependency-name:") or
+          trimmed.startsWith("- dependency-name:"):
         let dep = trimmed.split(':')[1].strip().strip(chars = {'"', '\''})
         currentTarget.ignore.add(IgnoreRule(dependencyName: dep, versions: @[]))
 

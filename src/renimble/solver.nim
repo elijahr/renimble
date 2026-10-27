@@ -1,21 +1,22 @@
 import std/[os, osproc]
 
-type
-  SolverResult* = object
-    success*: bool
-    commandRan*: string
-    output*: string
-    usedNativeSolver*: bool
+type SolverResult* = object
+  success*: bool
+  commandRan*: string
+  output*: string
+  usedNativeSolver*: bool
 
 proc isCommandAvailable*(cmd: string): bool =
-  let testCmd = if defined(windows): "where " & cmd else: "which " & cmd
+  let testCmd =
+    if defined(windows):
+      "where " & cmd
+    else:
+      "which " & cmd
   let (_, exitCode) = execCmdEx(testCmd)
   return exitCode == 0
 
 proc runNativeLockfileSync*(
-  workingDir: string = ".",
-  packageNames: seq[string] = @[],
-  isAtlas: bool = false
+    workingDir: string = ".", packageNames: seq[string] = @[], isAtlas: bool = false
 ): SolverResult =
   ## Invokes the official ecosystem solver (nimble lock or atlas pin) to re-resolve
   ## and guarantee zero transitive dependency corruption in lockfiles.
@@ -24,17 +25,14 @@ proc runNativeLockfileSync*(
       let cmd = "atlas pin"
       let (outp, exitCode) = execCmdEx(cmd, workingDir = workingDir)
       return SolverResult(
-        success: exitCode == 0,
-        commandRan: cmd,
-        output: outp,
-        usedNativeSolver: true
+        success: exitCode == 0, commandRan: cmd, output: outp, usedNativeSolver: true
       )
     else:
       return SolverResult(
         success: false,
         commandRan: "atlas",
         output: "atlas CLI not found in PATH",
-        usedNativeSolver: false
+        usedNativeSolver: false,
       )
   else:
     if isCommandAvailable("nimble"):
@@ -46,10 +44,7 @@ proc runNativeLockfileSync*(
       let (outp, exitCode) = execCmdEx(cmd, workingDir = workingDir)
       if exitCode == 0:
         return SolverResult(
-          success: true,
-          commandRan: cmd,
-          output: outp,
-          usedNativeSolver: true
+          success: true, commandRan: cmd, output: outp, usedNativeSolver: true
         )
       else:
         # Fallback to general nimble lock without specific arguments
@@ -59,12 +54,12 @@ proc runNativeLockfileSync*(
           success: fbCode == 0,
           commandRan: fallbackCmd,
           output: if fbCode == 0: fbOutp else: outp,
-          usedNativeSolver: true
+          usedNativeSolver: true,
         )
     else:
       return SolverResult(
         success: false,
         commandRan: "nimble",
         output: "nimble CLI not found in PATH",
-        usedNativeSolver: false
+        usedNativeSolver: false,
       )

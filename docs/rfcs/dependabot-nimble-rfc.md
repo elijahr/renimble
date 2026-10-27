@@ -249,8 +249,8 @@ For direct URLs, `UpdateChecker` bypasses `packages.json` and queries the remote
 A major concern for the Dependabot Core maintainers when adopting new ecosystems is the Docker container footprint and additional language toolchain maintenance:
 
 > [!IMPORTANT]
-> **Zero New System Dependencies Required**  
-> Nimble support in `dependabot-core` is architected as a **pure-Ruby implementation**.  
+> **Zero New System Dependencies Required**
+> Nimble support in `dependabot-core` is architected as a **pure-Ruby implementation**.
 > It does **not** require installing the Nim compiler (`nim`), the Nimble package manager (`nimble`), or the Atlas cloner (`atlas`) into the Dependabot Docker updater container.
 
 | Component | Implementation Strategy | Dependencies |

@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![GitHub Actions Marketplace](https://img.shields.io/badge/Marketplace-Renimble-blue?logo=githubactions&logoColor=white)](https://github.com/marketplace/actions/renimble-nim-dependency-updater)
 
-> **The definitive automated dependency updater for Nim projects.**  
+> **The definitive automated dependency updater for Nim projects.**
 > First-class `.nimble` and `nimble.lock` dependency tracking, automated version resolution, grouped pull requests, and GitHub Actions Marketplace integration.
 
 ---
