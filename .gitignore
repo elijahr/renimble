@@ -8,13 +8,17 @@ nimdoc.out/
 *.a
 *.so
 *.dylib
+*.out
 /renimble
 bin/
 tests/test_all
 
 # Nimble cache & packages
 .nimble/
+nimblecache/
 nimbledeps/
+htmldocs/
+site/
 
 # OS / Editor files
 .DS_Store
@@ -22,6 +26,7 @@ nimbledeps/
 *~
 .idea/
 .vscode/
+justfile.local
 
 # Garden & Rhizo ephemeral state
 .garden/tmp/
