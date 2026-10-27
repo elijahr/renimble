@@ -2,21 +2,21 @@ import std/[options, tables]
 
 type
   VersionOp* = enum
-    voNone,      # No operator (exact or untyped)
-    voEq,        # ==
-    voNe,        # !=
-    voLt,        # <
-    voLe,        # <=
-    voGt,        # >
-    voGe,        # >=
-    voCaret,     # ^=
-    voTilde      # ~=
+    voNone # No operator (exact or untyped)
+    voEq # ==
+    voNe # !=
+    voLt # <
+    voLe # <=
+    voGt # >
+    voGe # >=
+    voCaret # ^=
+    voTilde # ~=
 
   VersionKind* = enum
-    vkSemVer,    # 1.2.3
-    vkHead,      # #head
-    vkBranch,    # #master
-    vkCommit     # #sha
+    vkSemVer # 1.2.3
+    vkHead # #head
+    vkBranch # #master
+    vkCommit # #sha
 
   SemVersion* = object
     major*: int
@@ -68,8 +68,8 @@ type
     packages*: Table[string, LockPackage]
 
   ScheduleInterval* = enum
-    siDaily,
-    siWeekly,
+    siDaily
+    siWeekly
     siMonthly
 
   ScheduleConfig* = object
@@ -109,10 +109,10 @@ type
     updates*: seq[UpdateTargetConfig]
 
   BumpType* = enum
-    btNone,
-    btPatch,
-    btMinor,
-    btMajor,
+    btNone
+    btPatch
+    btMinor
+    btMajor
     btVcs
 
   UpdateProposal* = object

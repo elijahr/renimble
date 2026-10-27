@@ -50,7 +50,7 @@ suite "Real-World Fixtures & Manifest Parsing":
     let m = parseNimbleManifest(content, fixturesDir / "head_pins.nimble")
     check m.version == "1.2.0"
     check m.dependencies.len == 4
-    
+
     # chronos#head
     check m.dependencies[1].name == "chronos"
     check m.dependencies[1].constraint.constraints.len == 1
@@ -67,7 +67,8 @@ suite "Real-World Fixtures & Manifest Parsing":
     check m.dependencies[3].name == "bearlibterminal"
     check m.dependencies[3].constraint.constraints.len == 1
     check m.dependencies[3].constraint.constraints[0].spec.kind == vkCommit
-    check m.dependencies[3].constraint.constraints[0].spec.vcsRef == "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b"
+    check m.dependencies[3].constraint.constraints[0].spec.vcsRef ==
+      "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b"
 
   test "Parse feature flags and varied constraint operators":
     let content = readFile(fixturesDir / "feature_flags.nimble")
@@ -110,7 +111,7 @@ suite "In-Place Rewriting on Real-World Fixtures":
     check "zippy >= 0.11.0" in updated
     check "yaml >= 1.0.0" in updated
     check "cligen >= 1.5.0" in updated
-    
+
     # Verify re-parsing the updated manifest
     let m = parseNimbleManifest(updated)
     check m.dependencies[1].name == "zippy"

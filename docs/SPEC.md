@@ -1,7 +1,7 @@
 # Renimble: Core Technical Specification
-**Organization**: `axiomantic`  
-**Repository**: `renimble`  
-**License**: MIT  
+**Organization**: `axiomantic`
+**Repository**: `renimble`
+**License**: MIT
 **Language**: Nim (>= 2.0.0)
 
 ---
@@ -26,40 +26,40 @@ Modern CI/CD pipelines rely on automated dependency updaters like GitHub Dependa
 flowchart TD
     Config[".github/renimble.yml"] --> Runner["Renimble Runner Engine"]
     CLI["CLI Flags / GitHub Actions Inputs"] --> Runner
-    
+
     subgraph Discovery["1. Discovery & Parsing"]
         NimbleFile[".nimble Files"] --> DeclParser["Declarative Parser"]
         LockFile["nimble.lock Files"] --> LockParser["Lockfile Parser"]
         DeclParser --> DepGraph["Active Dependency Graph"]
         LockParser --> DepGraph
     end
-    
+
     subgraph Registry["2. Package Registry & Upstream VCS"]
         NimRegistry["Nim packages.json"] --> RegCache["Registry Cache"]
         GitHubAPI["GitHub / GitLab API"] --> Upstream["Upstream Tag & Release Probe"]
         RegCache --> Upstream
     end
-    
+
     subgraph Engine["3. Resolution & Strategy"]
         DepGraph --> Solver["Version Engine & Constraint Solver"]
         Upstream --> Solver
         Solver --> UpdatePlan["Resolved Update Plan (Major/Minor/Patch/Pins)"]
         UpdatePlan --> Grouping["Grouping Engine"]
     end
-    
+
     subgraph Mutator["4. AST-Preserving Mutation"]
         Grouping --> Rewriter["Nimble AST Rewriter"]
         Grouping --> LockWriter["Lockfile Sync Writer"]
         Rewriter --> ModNimble[".nimble in-place update"]
         LockWriter --> ModLock["nimble.lock update"]
     end
-    
+
     subgraph Distribution["5. PR Generation & GitHub Actions"]
         ModNimble --> GitOps["Git Branch & Commit Engine"]
         ModLock --> GitOps
         GitOps --> GitHubPR["GitHub PR API & Markdown Generator"]
     end
-    
+
     Runner --> Discovery
     Runner --> Registry
     Runner --> Engine
@@ -176,7 +176,7 @@ updates:
       day: "monday"
       time: "06:00"
       timezone: "Etc/UTC"
-    
+
     # Update grouping rules
     groups:
       dev-dependencies:

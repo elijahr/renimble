@@ -23,9 +23,15 @@ proc updateWorkflowNimVersion*(content: string, targetVersion: string): (string,
     let trimmed = line.strip()
     if trimmed.startsWith("nim-version:"):
       let colonIdx = line.find("nim-version:")
-      let indent = line[0..<colonIdx]
-      let oldVal = line[(colonIdx + "nim-version:".len)..^1].strip()
-      let quoteChar = if oldVal.startsWith("'"): "'" elif oldVal.startsWith("\""): "\"" else: "'"
+      let indent = line[0 ..< colonIdx]
+      let oldVal = line[(colonIdx + "nim-version:".len) ..^ 1].strip()
+      let quoteChar =
+        if oldVal.startsWith("'"):
+          "'"
+        elif oldVal.startsWith("\""):
+          "\""
+        else:
+          "'"
       let newLine = indent & "nim-version: " & quoteChar & targetVersion & quoteChar
       if line != newLine:
         lines[i] = newLine
@@ -52,7 +58,7 @@ proc updateMiseTomlNim*(content: string, targetVersion: string): (string, bool) 
   for i, line in lines:
     let trimmed = line.strip()
     if trimmed.startsWith("nim =") or trimmed.startsWith("nim="):
-      let indent = line[0..<line.find("nim")]
+      let indent = line[0 ..< line.find("nim")]
       let newLine = indent & "nim = \"" & targetVersion & "\""
       if line != newLine:
         lines[i] = newLine

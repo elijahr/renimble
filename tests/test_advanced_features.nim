@@ -1,8 +1,10 @@
 import std/[unittest, tables, os, strutils, json]
-import ../src/renimble/[types, version, dismissal, atlas, declarative_parser, rewriter, compiler, pr, solver]
+import
+  ../src/renimble/[
+    types, version, dismissal, atlas, declarative_parser, rewriter, compiler, pr, solver
+  ]
 
 suite "Advanced Dependency Engine Features":
-
   # ---------------------------------------------------------------------------
   # 1. Inequality Operator (!=)
   # ---------------------------------------------------------------------------
@@ -28,7 +30,8 @@ suite "Advanced Dependency Engine Features":
     check cleanPackageName("zippy") == "zippy"
     check cleanPackageName("https://github.com/nim-lang/zip") == "zip"
     check cleanPackageName("https://github.com/nim-lang/zip.git") == "zip"
-    check cleanPackageName("git@github.com:tree-sitter/nim-tree-sitter.git") == "nim-tree-sitter"
+    check cleanPackageName("git@github.com:tree-sitter/nim-tree-sitter.git") ==
+      "nim-tree-sitter"
 
   test "Parse direct URL requires statements":
     let src = """
@@ -148,7 +151,7 @@ requires "https://github.com/nim-lang/zip >= 0.3.1"
       currentVersion: "0.10.4",
       targetVersion: "0.11.0",
       targetVcsRevision: "abcdef123456",
-      bumpType: btMinor
+      bumpType: btMinor,
     )
     let body = generatePrBody(@[p])
     check "<!-- renimble-metadata" in body
@@ -228,9 +231,7 @@ requires "https://github.com/nim-lang/zip >= 0.3.1"
 
   test "Solver handles missing or failing solver cleanly without crash":
     let res = runNativeLockfileSync(
-      workingDir = getTempDir(),
-      packageNames = @["zippy"],
-      isAtlas = false
+      workingDir = getTempDir(), packageNames = @["zippy"], isAtlas = false
     )
     # The call must return a structured result without throwing an unhandled exception
     check res.commandRan.len > 0
@@ -242,7 +243,7 @@ requires "https://github.com/nim-lang/zip >= 0.3.1"
     let r = GitOpsReport(
       branchName: "renimble/zippy-0.11.0",
       prTitle: "chore(deps): bump zippy from 0.10.4 to 0.11.0",
-      prBody: "Automated bump body"
+      prBody: "Automated bump body",
     )
     # Testing invocation in non-gh temp directory returns structured failure without crashing
     let prRes = createPullRequest(
@@ -251,7 +252,7 @@ requires "https://github.com/nim-lang/zip >= 0.3.1"
       labels = @["dependencies", "nim"],
       reviewers = @["alice"],
       assignees = @["bob"],
-      workingDir = getTempDir()
+      workingDir = getTempDir(),
     )
     check prRes.command.contains("pr create")
     check prRes.command.contains("--base main")

@@ -1,18 +1,26 @@
 import std/[os, parseopt, strutils, options, tables]
-import renimble/[types, version, declarative_parser, rewriter, lockfile, config, registry, engine, pr, github_actions, atlas, dismissal, solver, compiler]
+import
+  renimble/[
+    types, version, declarative_parser, rewriter, lockfile, config, registry, engine,
+    pr, github_actions, atlas, dismissal, solver, compiler,
+  ]
 
 const RenimbleVersion = "0.1.1"
 
-type
-  CliMode = enum
-    cmReport,  # Default local: inspect and print update report (read-only, zero files touched, zero git)
-    cmUpdate,  # Local apply: modifies .nimble in-place, delegates lockfile to native solver, zero git
-    cmCheck,   # Check mode: reports and exits with code 1 if updates found (for pre-commit/CI gating)
-    cmCi       # CI/Action mode: automated GitOps branch creation, commits, push, and PR generation
+type CliMode = enum
+  cmReport
+    # Default local: inspect and print update report (read-only, zero files touched, zero git)
+  cmUpdate
+    # Local apply: modifies .nimble in-place, delegates lockfile to native solver, zero git
+  cmCheck
+    # Check mode: reports and exits with code 1 if updates found (for pre-commit/CI gating)
+  cmCi
+    # CI/Action mode: automated GitOps branch creation, commits, push, and PR generation
 
 proc printHelp() =
   echo """
-renimble - Automated Dependency Updater for Nim & Nimble (v""" & RenimbleVersion & """)
+renimble - Automated Dependency Updater for Nim & Nimble (v""" &
+    RenimbleVersion & """)
 
 Usage:
   renimble [command] [options]
@@ -53,7 +61,8 @@ proc main() =
   while true:
     p.next()
     case p.kind
-    of cmdEnd: break
+    of cmdEnd:
+      break
     of cmdShortOption, cmdLongOption:
       case p.key.toLowerAscii()
       of "h", "help":
@@ -104,7 +113,11 @@ proc main() =
   var totalUpdates = 0
 
   for target in conf.updates:
-    let targetDir = if target.directory.startsWith("/"): target.directory[1..^1] else: target.directory
+    let targetDir =
+      if target.directory.startsWith("/"):
+        target.directory[1 ..^ 1]
+      else:
+        target.directory
     let searchDir = if targetDir.len == 0: "." else: targetDir
 
     let nimbleFileOpt = findNimbleFile(searchDir)
@@ -138,12 +151,15 @@ proc main() =
 
     let dismissals = fetchClosedPrDismissals()
     if dismissals.len > 0:
-      echo "==> Loaded " & $dismissals.len & " closed PR dismissal(s) to suppress duplicate notifications."
+      echo "==> Loaded " & $dismissals.len &
+        " closed PR dismissal(s) to suppress duplicate notifications."
 
     echo "==> Checking " & $manifest.dependencies.len & " dependencies..."
     var updates: seq[UpdateProposal] = @[]
     for dep in manifest.dependencies:
-      let propOpt = resolveDependencyUpdate(dep, target, reg, lockFileOpt, atlasConfigOpt, dismissals)
+      let propOpt = resolveDependencyUpdate(
+        dep, target, reg, lockFileOpt, atlasConfigOpt, dismissals
+      )
       if propOpt.isSome:
         updates.add(propOpt.get)
 
@@ -155,7 +171,8 @@ proc main() =
     echo "\n=== Available Updates (" & $updates.len & ") ==="
     for u in updates:
       let lockOnlyTag = if u.isLockfileOnly: " [lockfile-only]" else: ""
-      echo "  • " & u.dependency.name & ": " & u.currentVersion & " -> " & u.targetVersion & " (" & $u.bumpType & ")" & lockOnlyTag
+      echo "  • " & u.dependency.name & ": " & u.currentVersion & " -> " &
+        u.targetVersion & " (" & $u.bumpType & ")" & lockOnlyTag
     echo "==============================\n"
 
     # -------------------------------------------------------------------------
@@ -182,8 +199,10 @@ proc main() =
     for u in updates:
       updatedPkgNames.add(cleanPackageName(u.dependency.name))
       if not u.isLockfileOnly:
-        let newConstraint = updateConstraintString(u.dependency.rawConstraint, u.targetVersion)
-        updatedNimble = rewriteNimbleFile(updatedNimble, u.dependency.name, newConstraint)
+        let newConstraint =
+          updateConstraintString(u.dependency.rawConstraint, u.targetVersion)
+        updatedNimble =
+          rewriteNimbleFile(updatedNimble, u.dependency.name, newConstraint)
         nimbleModified = true
 
     if nimbleModified:
@@ -200,11 +219,13 @@ proc main() =
         if dirExists(wfDir):
           for kind, path in walkDir(wfDir):
             if kind == pcFile and (path.endsWith(".yml") or path.endsWith(".yaml")):
-              let (newContent, modded) = updateWorkflowNimVersion(readFile(path), targetNimVer)
+              let (newContent, modded) =
+                updateWorkflowNimVersion(readFile(path), targetNimVer)
               if modded:
                 writeFile(path, newContent)
                 echo "==> Updated compiler version in workflow: " & path
-                if path notin modifiedFiles: modifiedFiles.add(path)
+                if path notin modifiedFiles:
+                  modifiedFiles.add(path)
 
         # 2. Update .tool-versions
         let tvPath = searchDir / ".tool-versions"
@@ -213,7 +234,8 @@ proc main() =
           if modded:
             writeFile(tvPath, newTv)
             echo "==> Updated compiler version in: " & tvPath
-            if tvPath notin modifiedFiles: modifiedFiles.add(tvPath)
+            if tvPath notin modifiedFiles:
+              modifiedFiles.add(tvPath)
 
         # 3. Update .mise.toml
         let misePath = searchDir / ".mise.toml"
@@ -222,14 +244,16 @@ proc main() =
           if modded:
             writeFile(misePath, newMise)
             echo "==> Updated compiler version in: " & misePath
-            if misePath notin modifiedFiles: modifiedFiles.add(misePath)
+            if misePath notin modifiedFiles:
+              modifiedFiles.add(misePath)
 
     # Re-resolve lockfiles via delegated native solver to avoid transitive graph corruption
     let isAtlas = atlasConfigOpt.isSome or atlasLockOpt.isSome
     let solverRes = runNativeLockfileSync(searchDir, updatedPkgNames, isAtlas)
 
     if solverRes.usedNativeSolver and solverRes.success:
-      echo "==> [Solver] Re-resolved and verified lockfile via '" & solverRes.commandRan & "' (transitive graph intact)."
+      echo "==> [Solver] Re-resolved and verified lockfile via '" & solverRes.commandRan &
+        "' (transitive graph intact)."
       if fileExists(lockPath) and lockPath notin modifiedFiles:
         modifiedFiles.add(lockPath)
       if fileExists(atlasLockPath) and atlasLockPath notin modifiedFiles:
@@ -239,7 +263,9 @@ proc main() =
       if lockFileOpt.isSome:
         var lock = lockFileOpt.get
         for u in updates:
-          updateLockPackage(lock, u.dependency.name, u.targetVersion, u.targetVcsRevision)
+          updateLockPackage(
+            lock, u.dependency.name, u.targetVersion, u.targetVcsRevision
+          )
         writeFile(lockPath, serializeLockFile(lock))
         echo "==> Updated " & lockPath & " (top-level only)."
         modifiedFiles.add(lockPath)
@@ -247,7 +273,12 @@ proc main() =
       if atlasLockOpt.isSome:
         var alock = atlasLockOpt.get
         for u in updates:
-          updateAtlasLock(alock, cleanPackageName(u.dependency.name), u.targetVcsRevision, u.targetVersion)
+          updateAtlasLock(
+            alock,
+            cleanPackageName(u.dependency.name),
+            u.targetVcsRevision,
+            u.targetVersion,
+          )
         writeFile(atlasLockPath, serializeAtlasLock(alock))
         echo "==> Updated " & atlasLockPath & " (top-level only)."
         modifiedFiles.add(atlasLockPath)
@@ -272,10 +303,11 @@ proc main() =
         authorName = "renimble[bot]",
         authorEmail = "renimble[bot]@users.noreply.github.com",
         workingDir = searchDir,
-        commitPrefix = target.commitMessage.prefix
+        commitPrefix = target.commitMessage.prefix,
       )
       if report.success:
-        echo "==> [GitOps] Successfully created branch '" & report.branchName & "' and committed changes."
+        echo "==> [GitOps] Successfully created branch '" & report.branchName &
+          "' and committed changes."
         if isGitHubActions() and getEnv("RENIMBLE_NO_PUSH", "0") != "1":
           echo "==> [GitOps] Pushing branch to remote origin..."
           let pushRes = gitPush(report.branchName, "origin", workingDir = searchDir)
@@ -287,7 +319,7 @@ proc main() =
               labels = target.labels,
               reviewers = target.reviewers,
               assignees = target.assignees,
-              workingDir = searchDir
+              workingDir = searchDir,
             )
             if prRes.success:
               echo "==> [GitOps] Successfully opened PR: " & prRes.output

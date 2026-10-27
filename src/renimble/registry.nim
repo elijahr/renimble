@@ -1,14 +1,19 @@
 import std/[httpclient, json, os, tables, options, strutils]
 import types
 
-const DefaultRegistryUrl* = "https://raw.githubusercontent.com/nim-lang/packages/master/packages.json"
+const DefaultRegistryUrl* =
+  "https://raw.githubusercontent.com/nim-lang/packages/master/packages.json"
 
 type PackageRegistry* = object
   packages*: Table[string, RegistryPackage]
   cachePath*: string
 
 proc newPackageRegistry*(cacheDir: string = ""): PackageRegistry =
-  let actualDir = if cacheDir.len > 0: cacheDir else: getCacheDir("renimble")
+  let actualDir =
+    if cacheDir.len > 0:
+      cacheDir
+    else:
+      getCacheDir("renimble")
   createDir(actualDir)
   result.cachePath = actualDir / "packages.json"
   result.packages = initTable[string, RegistryPackage]()
@@ -37,7 +42,11 @@ proc loadFromContent*(reg: var PackageRegistry, content: string) =
       if pkg.name.len > 0:
         reg.packages[pkg.name.toLowerAscii()] = pkg
 
-proc fetchRegistry*(reg: var PackageRegistry, forceRefresh: bool = false, url: string = DefaultRegistryUrl): bool =
+proc fetchRegistry*(
+    reg: var PackageRegistry,
+    forceRefresh: bool = false,
+    url: string = DefaultRegistryUrl,
+): bool =
   if not forceRefresh and fileExists(reg.cachePath):
     try:
       let content = readFile(reg.cachePath)

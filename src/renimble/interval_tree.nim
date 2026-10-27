@@ -3,8 +3,8 @@ import types, version
 
 type
   BoundKind* = enum
-    bkNegativeInfinity,
-    bkValue,
+    bkNegativeInfinity
+    bkValue
     bkPositiveInfinity
 
   SemVerBound* = object
@@ -42,18 +42,28 @@ proc cmpBound*(a, b: SemVerBound): int =
   if a.kind == b.kind:
     if a.kind == bkValue:
       let c = cmp(a.ver, b.ver)
-      if c != 0: return c
-      if a.inclusive == b.inclusive: return 0
+      if c != 0:
+        return c
+      if a.inclusive == b.inclusive:
+        return 0
       return if a.inclusive: 1 else: -1
     return 0
-  if a.kind == bkNegativeInfinity: return -1
-  if b.kind == bkNegativeInfinity: return 1
-  if a.kind == bkPositiveInfinity: return 1
+  if a.kind == bkNegativeInfinity:
+    return -1
+  if b.kind == bkNegativeInfinity:
+    return 1
+  if a.kind == bkPositiveInfinity:
+    return 1
   return -1
 
-proc `<`*(a, b: SemVerBound): bool {.inline.} = cmpBound(a, b) < 0
-proc `<=`*(a, b: SemVerBound): bool {.inline.} = cmpBound(a, b) <= 0
-proc `==`*(a, b: SemVerBound): bool {.inline.} = cmpBound(a, b) == 0
+proc `<`*(a, b: SemVerBound): bool {.inline.} =
+  cmpBound(a, b) < 0
+
+proc `<=`*(a, b: SemVerBound): bool {.inline.} =
+  cmpBound(a, b) <= 0
+
+proc `==`*(a, b: SemVerBound): bool {.inline.} =
+  cmpBound(a, b) == 0
 
 proc maxBound*(a, b: SemVerBound): SemVerBound {.inline.} =
   if a < b: b else: a
@@ -68,9 +78,11 @@ proc contains*(iv: VersionInterval, v: SemVersion): bool =
     discard
   of bkValue:
     if iv.low.inclusive:
-      if v < iv.low.ver: return false
+      if v < iv.low.ver:
+        return false
     else:
-      if v <= iv.low.ver: return false
+      if v <= iv.low.ver:
+        return false
   of bkPositiveInfinity:
     return false
 
@@ -80,9 +92,11 @@ proc contains*(iv: VersionInterval, v: SemVersion): bool =
     discard
   of bkValue:
     if iv.high.inclusive:
-      if v > iv.high.ver: return false
+      if v > iv.high.ver:
+        return false
     else:
-      if v >= iv.high.ver: return false
+      if v >= iv.high.ver:
+        return false
   of bkNegativeInfinity:
     return false
 
@@ -97,13 +111,15 @@ proc intersects*(a, b: VersionInterval): bool =
 
   # Check if a is strictly above b
   if a.low.kind == bkValue and b.high.kind == bkValue:
-    if a.low.ver > b.high.ver: return false
+    if a.low.ver > b.high.ver:
+      return false
     if a.low.ver == b.high.ver and (not a.low.inclusive or not b.high.inclusive):
       return false
 
   # Check if b is strictly above a
   if b.low.kind == bkValue and a.high.kind == bkValue:
-    if b.low.ver > a.high.ver: return false
+    if b.low.ver > a.high.ver:
+      return false
     if b.low.ver == a.high.ver and (not b.low.inclusive or not a.high.inclusive):
       return false
 
@@ -160,28 +176,26 @@ proc singleConstraintToIntervals*(c: SingleConstraint): seq[VersionInterval] =
     let target = c.spec.semver
     return @[
       newInterval(negInf(), bound(target, false)),
-      newInterval(bound(target, false), posInf())
+      newInterval(bound(target, false), posInf()),
     ]
   else:
     return @[singleConstraintToInterval(c)]
 
 proc updateMaxHigh[T](node: IntervalNode[T]) =
-  if node == nil: return
+  if node == nil:
+    return
   node.maxHigh = node.interval.high
   if node.left != nil:
     node.maxHigh = maxBound(node.maxHigh, node.left.maxHigh)
   if node.right != nil:
     node.maxHigh = maxBound(node.maxHigh, node.right.maxHigh)
 
-proc insertNode[T](root: IntervalNode[T], iv: VersionInterval, data: T): IntervalNode[T] =
+proc insertNode[T](
+    root: IntervalNode[T], iv: VersionInterval, data: T
+): IntervalNode[T] =
   if root == nil:
-    return IntervalNode[T](
-      interval: iv,
-      maxHigh: iv.high,
-      data: data,
-      left: nil,
-      right: nil
-    )
+    return
+      IntervalNode[T](interval: iv, maxHigh: iv.high, data: data, left: nil, right: nil)
 
   if iv.low < root.interval.low:
     root.left = insertNode(root.left, iv, data)
@@ -199,7 +213,8 @@ proc queryPoint*[T](tree: VersionIntervalTree[T], point: SemVersion): seq[T] =
   result = @[]
 
   proc search(node: IntervalNode[T], res: var seq[T]) =
-    if node == nil: return
+    if node == nil:
+      return
     # If point is strictly greater than subtree maxHigh, no overlap possible
     if node.maxHigh.kind == bkValue and node.maxHigh.ver < point:
       return
@@ -219,7 +234,8 @@ proc queryOverlaps*[T](tree: VersionIntervalTree[T], query: VersionInterval): se
   result = @[]
 
   proc search(node: IntervalNode[T], res: var seq[T]) =
-    if node == nil: return
+    if node == nil:
+      return
 
     # Prune if query.low is strictly greater than subtree maxHigh
     if node.maxHigh.kind == bkValue and query.low.kind == bkValue:

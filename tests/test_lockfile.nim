@@ -20,9 +20,12 @@ suite "Nimble Lockfile Sync":
     check lock.packages.hasKey("zippy")
     check lock.packages["zippy"].version == "0.10.4"
 
-    updateLockPackage(lock, "zippy", "0.11.0", "fedcba0987654321fedcba0987654321fedcba09")
+    updateLockPackage(
+      lock, "zippy", "0.11.0", "fedcba0987654321fedcba0987654321fedcba09"
+    )
     check lock.packages["zippy"].version == "0.11.0"
-    check lock.packages["zippy"].vcsRevision == "fedcba0987654321fedcba0987654321fedcba09"
+    check lock.packages["zippy"].vcsRevision ==
+      "fedcba0987654321fedcba0987654321fedcba09"
 
     let serialized = serializeLockFile(lock)
     check "\"0.11.0\"" in serialized

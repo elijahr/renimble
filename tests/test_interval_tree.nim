@@ -49,7 +49,9 @@ suite "SemVer Interval Tree & Range Algebra":
     check neTree.queryPoint(parseSemVersion("1.5.0")).len == 0 # Negative control!
 
   test "Interval point containment":
-    let iv = newInterval(bound(parseSemVersion("1.0.0"), true), bound(parseSemVersion("2.0.0"), false))
+    let iv = newInterval(
+      bound(parseSemVersion("1.0.0"), true), bound(parseSemVersion("2.0.0"), false)
+    )
     check contains(iv, parseSemVersion("1.0.0"))
     check contains(iv, parseSemVersion("1.5.0"))
     check contains(iv, parseSemVersion("1.9.9"))
@@ -57,9 +59,15 @@ suite "SemVer Interval Tree & Range Algebra":
     check not contains(iv, parseSemVersion("2.0.0"))
 
   test "Interval intersection":
-    let a = newInterval(bound(parseSemVersion("1.0.0"), true), bound(parseSemVersion("2.0.0"), true))
-    let b = newInterval(bound(parseSemVersion("1.5.0"), true), bound(parseSemVersion("2.5.0"), true))
-    let c = newInterval(bound(parseSemVersion("2.1.0"), true), bound(parseSemVersion("3.0.0"), true))
+    let a = newInterval(
+      bound(parseSemVersion("1.0.0"), true), bound(parseSemVersion("2.0.0"), true)
+    )
+    let b = newInterval(
+      bound(parseSemVersion("1.5.0"), true), bound(parseSemVersion("2.5.0"), true)
+    )
+    let c = newInterval(
+      bound(parseSemVersion("2.1.0"), true), bound(parseSemVersion("3.0.0"), true)
+    )
 
     check intersects(a, b)
     check intersects(b, c)
@@ -68,9 +76,24 @@ suite "SemVer Interval Tree & Range Algebra":
   test "Interval tree insertion and point-stabbing queries":
     var tree = newVersionIntervalTree[string]()
 
-    tree.insert(newInterval(bound(parseSemVersion("1.0.0"), true), bound(parseSemVersion("2.0.0"), false)), "pkgA")
-    tree.insert(newInterval(bound(parseSemVersion("1.5.0"), true), bound(parseSemVersion("2.5.0"), true)), "pkgB")
-    tree.insert(newInterval(bound(parseSemVersion("0.5.0"), true), bound(parseSemVersion("0.9.0"), true)), "pkgC")
+    tree.insert(
+      newInterval(
+        bound(parseSemVersion("1.0.0"), true), bound(parseSemVersion("2.0.0"), false)
+      ),
+      "pkgA",
+    )
+    tree.insert(
+      newInterval(
+        bound(parseSemVersion("1.5.0"), true), bound(parseSemVersion("2.5.0"), true)
+      ),
+      "pkgB",
+    )
+    tree.insert(
+      newInterval(
+        bound(parseSemVersion("0.5.0"), true), bound(parseSemVersion("0.9.0"), true)
+      ),
+      "pkgC",
+    )
     tree.insert(newInterval(bound(parseSemVersion("3.0.0"), true), posInf()), "pkgD")
 
     check tree.count == 4
@@ -94,11 +117,28 @@ suite "SemVer Interval Tree & Range Algebra":
 
   test "Interval tree range overlap queries":
     var tree = newVersionIntervalTree[string]()
-    tree.insert(newInterval(bound(parseSemVersion("1.0.0"), true), bound(parseSemVersion("1.5.0"), true)), "v1")
-    tree.insert(newInterval(bound(parseSemVersion("1.6.0"), true), bound(parseSemVersion("2.0.0"), true)), "v2")
-    tree.insert(newInterval(bound(parseSemVersion("2.5.0"), true), bound(parseSemVersion("3.0.0"), true)), "v3")
+    tree.insert(
+      newInterval(
+        bound(parseSemVersion("1.0.0"), true), bound(parseSemVersion("1.5.0"), true)
+      ),
+      "v1",
+    )
+    tree.insert(
+      newInterval(
+        bound(parseSemVersion("1.6.0"), true), bound(parseSemVersion("2.0.0"), true)
+      ),
+      "v2",
+    )
+    tree.insert(
+      newInterval(
+        bound(parseSemVersion("2.5.0"), true), bound(parseSemVersion("3.0.0"), true)
+      ),
+      "v3",
+    )
 
-    let queryRange = newInterval(bound(parseSemVersion("1.4.0"), true), bound(parseSemVersion("1.7.0"), true))
+    let queryRange = newInterval(
+      bound(parseSemVersion("1.4.0"), true), bound(parseSemVersion("1.7.0"), true)
+    )
     let overlaps = tree.queryOverlaps(queryRange)
 
     check "v1" in overlaps

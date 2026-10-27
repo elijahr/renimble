@@ -1,7 +1,9 @@
 import std/strutils
 import declarative_parser
 
-proc rewriteRequiresLine*(line: string, targetPkg: string, newConstraint: string): string =
+proc rewriteRequiresLine*(
+    line: string, targetPkg: string, newConstraint: string
+): string =
   ## Replaces the constraint for targetPkg on a requires line while preserving
   ## surrounding quotes, whitespace, comments, and other packages on the same line.
   let stripped = line.strip()
@@ -30,15 +32,16 @@ proc rewriteRequiresLine*(line: string, targetPkg: string, newConstraint: string
         let bOpen = trimmedVal.find('[')
         let bClose = trimmedVal.find(']')
         if bOpen != -1 and bClose != -1 and bClose > bOpen:
-          pkg = trimmedVal[0..<bOpen].strip()
-          bracketPart = trimmedVal[bOpen..bClose]
-          rest = trimmedVal[(bClose + 1)..^1].strip()
+          pkg = trimmedVal[0 ..< bOpen].strip()
+          bracketPart = trimmedVal[bOpen .. bClose]
+          rest = trimmedVal[(bClose + 1) ..^ 1].strip()
         else:
           var nEnd = 0
-          while nEnd < trimmedVal.len and trimmedVal[nEnd] notin {' ', '\t', '#', '=', '<', '>', '^', '~'}:
+          while nEnd < trimmedVal.len and
+              trimmedVal[nEnd] notin {' ', '\t', '#', '=', '<', '>', '^', '~'}:
             inc nEnd
-          pkg = trimmedVal[0..<nEnd].strip()
-          rest = trimmedVal[nEnd..^1].strip()
+          pkg = trimmedVal[0 ..< nEnd].strip()
+          rest = trimmedVal[nEnd ..^ 1].strip()
 
         if pkg == targetPkg:
           # Target matched! Replace inside quotes
@@ -54,13 +57,15 @@ proc rewriteRequiresLine*(line: string, targetPkg: string, newConstraint: string
         inc i
       else:
         # Unterminated string literal, copy as-is
-        result.add(line[strStart..^1])
+        result.add(line[strStart ..^ 1])
         break
     else:
       result.add(line[i])
       inc i
 
-proc rewriteNimbleFile*(content: string, targetPkg: string, newConstraint: string): string =
+proc rewriteNimbleFile*(
+    content: string, targetPkg: string, newConstraint: string
+): string =
   let lines = content.splitLines()
   var modified: seq[string] = @[]
   var inRequires = false
@@ -89,7 +94,7 @@ proc rewriteNimbleFile*(content: string, targetPkg: string, newConstraint: strin
       var code = line
       let commentIdx = code.find('#')
       if commentIdx != -1:
-        code = code[0..<commentIdx]
+        code = code[0 ..< commentIdx]
       inRequires = code.strip().endsWith(",")
     else:
       modified.add(line)

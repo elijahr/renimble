@@ -3,22 +3,25 @@ import types, version
 
 proc cleanPackageName*(name: string): string =
   ## Strips URL schemes, forge prefixes, and trailing .git extensions to produce a canonical package name.
-  if name.startsWith("http://") or name.startsWith("https://") or name.startsWith("git://") or name.startsWith("git@"):
+  if name.startsWith("http://") or name.startsWith("https://") or
+      name.startsWith("git://") or name.startsWith("git@"):
     var clean = name
     if clean.endsWith(".git"):
-      clean = clean[0..^5]
+      clean = clean[0 ..^ 5]
     let lastSlash = clean.rfind('/')
     if lastSlash != -1:
-      return clean[(lastSlash + 1)..^1]
+      return clean[(lastSlash + 1) ..^ 1]
     return clean
   return name
 
-proc parseRequiresArg(rawArg: string, lineIndex: int, rawLine: string): Option[Dependency] =
+proc parseRequiresArg(
+    rawArg: string, lineIndex: int, rawLine: string
+): Option[Dependency] =
   var clean = rawArg.strip()
   if clean.startsWith("\"") and clean.endsWith("\"") and clean.len >= 2:
-    clean = clean[1..^2]
+    clean = clean[1 ..^ 2]
   elif clean.startsWith("'") and clean.endsWith("'") and clean.len >= 2:
-    clean = clean[1..^2]
+    clean = clean[1 ..^ 2]
   else:
     return none(Dependency)
 
@@ -34,28 +37,31 @@ proc parseRequiresArg(rawArg: string, lineIndex: int, rawLine: string): Option[D
   let bracketOpen = clean.find('[')
   let bracketClose = clean.find(']')
   if bracketOpen != -1 and bracketClose != -1 and bracketClose > bracketOpen:
-    pkgName = clean[0..<bracketOpen].strip()
-    feature = some(clean[(bracketOpen + 1)..<bracketClose].strip())
-    rest = clean[(bracketClose + 1)..^1].strip()
+    pkgName = clean[0 ..< bracketOpen].strip()
+    feature = some(clean[(bracketOpen + 1) ..< bracketClose].strip())
+    rest = clean[(bracketClose + 1) ..^ 1].strip()
   else:
     # Separate package name from constraint
     # Package name ends at whitespace or special character (#, =, <, >, ^, ~)
     var nameEnd = 0
-    while nameEnd < clean.len and clean[nameEnd] notin {' ', '\t', '#', '=', '<', '>', '^', '~'}:
+    while nameEnd < clean.len and
+        clean[nameEnd] notin {' ', '\t', '#', '=', '<', '>', '^', '~'}:
       inc nameEnd
-    pkgName = clean[0..<nameEnd].strip()
-    rest = clean[nameEnd..^1].strip()
+    pkgName = clean[0 ..< nameEnd].strip()
+    rest = clean[nameEnd ..^ 1].strip()
 
   let constraint = parseVersionConstraint(rest)
 
-  result = some(Dependency(
-    name: pkgName,
-    rawConstraint: rest,
-    constraint: constraint,
-    feature: feature,
-    rawLine: rawLine,
-    lineIndex: lineIndex
-  ))
+  result = some(
+    Dependency(
+      name: pkgName,
+      rawConstraint: rest,
+      constraint: constraint,
+      feature: feature,
+      rawLine: rawLine,
+      lineIndex: lineIndex,
+    )
+  )
 
 proc isRequiresStatement*(s: string): bool =
   let st = s.strip()
@@ -93,26 +99,30 @@ proc parseNimbleManifest*(content: string, filePath: string = ""): NimbleManifes
       inRequiresContinuation = false
       let eqIdx = stripped.find('=')
       if eqIdx != -1:
-        result.version = stripped[(eqIdx + 1)..^1].strip().strip(chars = {'"'})
+        result.version = stripped[(eqIdx + 1) ..^ 1].strip().strip(chars = {'"'})
     elif stripped.startsWith("author"):
       inRequiresContinuation = false
       let eqIdx = stripped.find('=')
       if eqIdx != -1:
-        result.author = stripped[(eqIdx + 1)..^1].strip().strip(chars = {'"'})
+        result.author = stripped[(eqIdx + 1) ..^ 1].strip().strip(chars = {'"'})
     elif stripped.startsWith("description"):
       inRequiresContinuation = false
       let eqIdx = stripped.find('=')
       if eqIdx != -1:
-        result.description = stripped[(eqIdx + 1)..^1].strip().strip(chars = {'"'})
+        result.description = stripped[(eqIdx + 1) ..^ 1].strip().strip(chars = {'"'})
     elif stripped.startsWith("license"):
       inRequiresContinuation = false
       let eqIdx = stripped.find('=')
       if eqIdx != -1:
-        result.license = stripped[(eqIdx + 1)..^1].strip().strip(chars = {'"'})
+        result.license = stripped[(eqIdx + 1) ..^ 1].strip().strip(chars = {'"'})
 
     # Extract requires lines or continuations
     if isRequiresStatement(stripped) or inRequiresContinuation:
-      let toParse = if isRequiresStatement(stripped): stripped[8..^1].strip() else: stripped
+      let toParse =
+        if isRequiresStatement(stripped):
+          stripped[8 ..^ 1].strip()
+        else:
+          stripped
       var currentArg = ""
       var inQuote = false
       var quoteChar = '"'

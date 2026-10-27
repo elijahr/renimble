@@ -14,7 +14,7 @@ proc parseGitLsRemoteTags*(output: string): seq[UpstreamTag] =
       let sha = parts[0].strip()
       let refName = parts[1].strip()
       if refName.startsWith("refs/tags/"):
-        var tagName = refName["refs/tags/".len..^1]
+        var tagName = refName["refs/tags/".len ..^ 1]
         # Ignore dereferenced tag pointers ^{} for now or map to same tag
         if tagName.endsWith("^{}"):
           continue
@@ -33,9 +33,14 @@ proc fetchUpstreamTags*(repoUrl: string): seq[UpstreamTag] =
   if exitCode == 0:
     result = parseGitLsRemoteTags(outp)
     # Sort descending by SemVer
-    result.sort(proc (a, b: UpstreamTag): int = cmp(b.semver, a.semver))
+    result.sort(
+      proc(a, b: UpstreamTag): int =
+        cmp(b.semver, a.semver)
+    )
 
-proc getLatestRelease*(tags: seq[UpstreamTag], currentConstraint: VersionConstraint): Option[UpstreamTag] =
+proc getLatestRelease*(
+    tags: seq[UpstreamTag], currentConstraint: VersionConstraint
+): Option[UpstreamTag] =
   if tags.len == 0:
     return none(UpstreamTag)
 
