@@ -5,7 +5,7 @@ import
     pr, github_actions, atlas, dismissal, solver, compiler,
   ]
 
-const RenimbleVersion = "0.1.1"
+const RenimbleVersion = "0.1.2"
 
 type CliMode = enum
   cmReport

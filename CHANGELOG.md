@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-10-31
+
+### Security
+- Gated `@renimble` PR comment commands in `.github/workflows/renimble-comments.yml` to repository `OWNER`, `MEMBER`, and `COLLABORATOR` roles.
+
+### Changed
+- Adopted Polyform v0.2.2 `pure_nim` template architecture and CI verification workflows.
+
 ### Fixed
 - **Adversarial Audit Pillar 1 (Shelfware Integration)**: Wired `compiler.nim` version synchronization into `renimble.nim` to update GitHub Actions workflows (`.github/workflows/*.yml`), asdf / mise (`.tool-versions`), and mise (`.mise.toml`) upon compiler bumps.
 - **Adversarial Audit Pillar 1 (GitOps PR Lifecycle)**: Implemented `createPullRequest` in `pr.nim` and integrated end-to-end branch push and PR creation in CI mode (`cmCi`).
